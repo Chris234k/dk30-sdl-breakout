@@ -101,10 +101,10 @@ bool load_media()
 {
     bool success = true;
     
-    gHelloWorld = SDL_LoadBMP("hello-world.png");
+    gHelloWorld = SDL_LoadBMP("hello_world.bmp");
     if(gHelloWorld == NULL)
     {
-        printf("Unable to load image %s! SDL Error %s\n", "hello-world.png", SDL_GetError());
+        printf("Unable to load image %s! SDL Error %s\n", "hello_world.bmp", SDL_GetError());
         
         SDL_Delay(5000);
         success = false;
@@ -136,6 +136,8 @@ int main(int argc, char* args[])
     {
         SDL_BlitSurface(gHelloWorld, NULL, gScreenSurface, NULL);
         SDL_UpdateWindowSurface(gWindow);
+        
+        SDL_Delay(5000);
     }
     
     close();
