@@ -13,7 +13,8 @@ LIBRARY_PATHS = -LC:\mingw_dev_libs\lib
 #COMPILER_FLAGS specifies the additional compilation options we're using
 # -w suppresses all warnings
 # -Wl,-subsystem,windows gets rid of the console window
-COMPILER_FLAGS = -w -Wl,-subsystem,windows
+# -static-libgcc -static-libstdc++ I believe this bakes a few dlls into the exe itself (std::string would fail without this)
+COMPILER_FLAGS = -w -Wl,-subsystem,windows -static-libgcc -static-libstdc++
 
 #LINKER_FLAGS specifies the libraries we're linking against
 LINKER_FLAGS = -lmingw32 -lSDL2main -lSDL2
