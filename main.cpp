@@ -112,20 +112,32 @@ bool init()
 
 SDL_Surface* load_surface(std::string path)
 {
+    SDL_Surface* optimizedSurface = NULL;
+    
     SDL_Surface* loadedSurface = SDL_LoadBMP(path.c_str());
     if(loadedSurface == NULL)
     {
         printf("Unable to load image %s! SDL Error: %s\n", path.c_str(), SDL_GetError());
     }
+    else
+    {
+        // Convert the surface to the same format as the screen
+        // Apparently this process would occur when blitting, so I believe we're just caching it
+        optimizedSurface = SDL_ConvertSurface(loadedSurface, gScreenSurface->format, NULL);
+        if(optimizedSurface == NULL)
+        {
+            printf("Unable to load optimized surface %s! SDL Error: %s\n", path.c_str(), SDL_GetError());
+        }
+    }
     
-    return loadedSurface;
+    return optimizedSurface;
 }
 
 bool load_media()
 {
     bool success = true;
 
-    gKeyPressSurfaces[KEY_PRESS_SURFACE_DEFAULT] = load_surface("press.bmp");
+    gKeyPressSurfaces[KEY_PRESS_SURFACE_DEFAULT] = load_surface("stretch.bmp");
     if(gKeyPressSurfaces[KEY_PRESS_SURFACE_DEFAULT] == NULL)
     {
         printf("Failed to load default image!\n");
@@ -225,7 +237,12 @@ int main(int argc, char* args[])
                 }
             }
             
-            SDL_BlitSurface(gCurrentSurface, NULL, gScreenSurface, NULL);
+            SDL_Rect stretchRect;
+            stretchRect.x = 0;
+            stretchRect.y = 0;
+            stretchRect.w = SCREEN_WIDTH;
+            stretchRect.h = SCREEN_HEIGHT;
+            SDL_BlitScaled(gCurrentSurface, NULL, gScreenSurface, &stretchRect);
             SDL_UpdateWindowSurface(gWindow);
         }
     }
