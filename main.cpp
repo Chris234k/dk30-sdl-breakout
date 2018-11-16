@@ -1,30 +1,18 @@
 #include "SDL.h"
 #include "SDL_syswm.h"
-
+#include <SDL_image.h>
+#include <string>
 #include <stdio.h>
 #include <windows.h>
 #include <iostream>
 #include <Fcntl.h>
-
-enum KeyPressSurfaces
-{
-    KEY_PRESS_SURFACE_DEFAULT,
-    KEY_PRESS_SURFACE_UP,
-    KEY_PRESS_SURFACE_DOWN,
-    KEY_PRESS_SURFACE_LEFT,
-    KEY_PRESS_SURFACE_RIGHT,
-    KEY_PRESS_SURFACE_TOTAL
-};
 
 const int SCREEN_WIDTH = 640;
 const int SCREEN_HEIGHT = 480;
 
 SDL_Window* gWindow = NULL;
 SDL_Surface* gScreenSurface = NULL;
-
-SDL_Surface* gKeyPressSurfaces[KEY_PRESS_SURFACE_TOTAL];
 SDL_Surface* gCurrentSurface = NULL;
-
 
 void create_debug_console()
 {
@@ -98,12 +86,16 @@ bool init()
         }
         else
         {
-            gScreenSurface = SDL_GetWindowSurface(gWindow);
-            
-            // Color the screen white
-            SDL_FillRect(gScreenSurface, NULL, SDL_MapRGB(gScreenSurface->format, 0xFF, 0xFF, 0xFF));
-            
-            SDL_UpdateWindowSurface(gWindow);
+            // SDL_image init
+            int imgFlags = IMG_INIT_PNG;
+            if(!(IMG_Init(imgFlags) & imgFlags))
+            {
+                printf("SDL_image could not initialize! SDL_image error: %s\n", IMG_GetError());
+            }
+            else
+            {
+                gScreenSurface = SDL_GetWindowSurface(gWindow);
+            }
         }
     }
     
@@ -114,10 +106,10 @@ SDL_Surface* load_surface(std::string path)
 {
     SDL_Surface* optimizedSurface = NULL;
     
-    SDL_Surface* loadedSurface = SDL_LoadBMP(path.c_str());
+    SDL_Surface* loadedSurface = IMG_Load(path.c_str());
     if(loadedSurface == NULL)
     {
-        printf("Unable to load image %s! SDL Error: %s\n", path.c_str(), SDL_GetError());
+        printf("Unable to load image %s! SDL Error: %s\n", path.c_str(), IMG_GetError());
     }
     else
     {
@@ -128,6 +120,8 @@ SDL_Surface* load_surface(std::string path)
         {
             printf("Unable to load optimized surface %s! SDL Error: %s\n", path.c_str(), SDL_GetError());
         }
+        
+        SDL_FreeSurface(loadedSurface);
     }
     
     return optimizedSurface;
@@ -137,38 +131,10 @@ bool load_media()
 {
     bool success = true;
 
-    gKeyPressSurfaces[KEY_PRESS_SURFACE_DEFAULT] = load_surface("stretch.bmp");
-    if(gKeyPressSurfaces[KEY_PRESS_SURFACE_DEFAULT] == NULL)
+    gCurrentSurface = load_surface("loaded.png");
+    if(gCurrentSurface == NULL)
     {
         printf("Failed to load default image!\n");
-        success = false;
-    }
-
-    gKeyPressSurfaces[KEY_PRESS_SURFACE_UP] = load_surface("up.bmp");
-    if(gKeyPressSurfaces[KEY_PRESS_SURFACE_UP] == NULL)
-    {
-        printf("Failed to load up image!\n");
-        success = false;
-    }
-
-    gKeyPressSurfaces[KEY_PRESS_SURFACE_DOWN] = load_surface("down.bmp");
-    if(gKeyPressSurfaces[KEY_PRESS_SURFACE_DOWN] == NULL)
-    {
-        printf("Failed to load down image!\n");
-        success = false;
-    }
-
-    gKeyPressSurfaces[KEY_PRESS_SURFACE_LEFT] = load_surface("left.bmp");
-    if(gKeyPressSurfaces[KEY_PRESS_SURFACE_LEFT] == NULL)
-    {
-        printf("Failed to load left image!\n");
-        success = false;
-    }
-
-    gKeyPressSurfaces[KEY_PRESS_SURFACE_RIGHT] = load_surface("right.bmp");
-    if(gKeyPressSurfaces[KEY_PRESS_SURFACE_RIGHT] == NULL)
-    {
-        printf("Failed to load right image!\n");
         success = false;
     }
 
@@ -191,60 +157,41 @@ int main(int argc, char* args[])
     // TODO(chris) this should be debug builds only
     create_debug_console();
     
-    if(load_media())
-    {
-        bool quit = false;
+    load_media();
     
-        SDL_Event e;
-        
-        gCurrentSurface = gKeyPressSurfaces[KEY_PRESS_SURFACE_DEFAULT];
-        while (!quit)
+    bool quit = false;
+
+    SDL_Event e;
+    
+    while (!quit)
+    {
+        while(SDL_PollEvent(&e) != 0)
         {
-            while(SDL_PollEvent(&e) != 0)
+            if(e.type == SDL_QUIT)
             {
-                if(e.type == SDL_QUIT)
+                quit = true;
+            }
+            else if(e.type == SDL_KEYDOWN)
+            {
+                switch(e.key.keysym.sym)
                 {
+                    case SDLK_ESCAPE:
                     quit = true;
-                }
-                else if(e.type == SDL_KEYDOWN)
-                {
-                    switch(e.key.keysym.sym)
-                    {
-                        case SDLK_ESCAPE:
-                        quit = true;
-                        break;
-                        
-                        case SDLK_UP:
-                        gCurrentSurface = gKeyPressSurfaces[KEY_PRESS_SURFACE_UP];
-                        break;
-                        
-                        case SDLK_DOWN:
-                        gCurrentSurface = gKeyPressSurfaces[KEY_PRESS_SURFACE_DOWN];
-                        break;
-                        
-                        case SDLK_LEFT:
-                        gCurrentSurface = gKeyPressSurfaces[KEY_PRESS_SURFACE_LEFT];
-                        break;
-                        
-                        case SDLK_RIGHT:
-                        gCurrentSurface = gKeyPressSurfaces[KEY_PRESS_SURFACE_RIGHT];
-                        break;
-                        
-                        default:
-                        gCurrentSurface = gKeyPressSurfaces[KEY_PRESS_SURFACE_DEFAULT];
-                        break;
-                    }
+                    break;
+                    
+                    default:
+                    break;
                 }
             }
-            
-            SDL_Rect stretchRect;
-            stretchRect.x = 0;
-            stretchRect.y = 0;
-            stretchRect.w = SCREEN_WIDTH;
-            stretchRect.h = SCREEN_HEIGHT;
-            SDL_BlitScaled(gCurrentSurface, NULL, gScreenSurface, &stretchRect);
-            SDL_UpdateWindowSurface(gWindow);
         }
+        
+        SDL_Rect stretchRect;
+        stretchRect.x = 0;
+        stretchRect.y = 0;
+        stretchRect.w = SCREEN_WIDTH;
+        stretchRect.h = SCREEN_HEIGHT;
+        SDL_BlitScaled(gCurrentSurface, NULL, gScreenSurface, &stretchRect);
+        SDL_UpdateWindowSurface(gWindow);
     }
 
     close();
