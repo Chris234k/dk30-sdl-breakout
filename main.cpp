@@ -11,8 +11,12 @@ const int SCREEN_WIDTH = 640;
 const int SCREEN_HEIGHT = 480;
 
 SDL_Window* gWindow = NULL;
+
 SDL_Surface* gScreenSurface = NULL;
-SDL_Surface* gCurrentSurface = NULL;
+
+SDL_Renderer* gRenderer = NULL;
+SDL_Texture* gTexture = NULL;
+
 
 void create_debug_console()
 {
@@ -86,15 +90,22 @@ bool init()
         }
         else
         {
-            // SDL_image init
-            int imgFlags = IMG_INIT_PNG;
-            if(!(IMG_Init(imgFlags) & imgFlags))
+            gRenderer = SDL_CreateRenderer(gWindow, -1, SDL_RENDERER_ACCELERATED);
+            if(gRenderer == NULL)
             {
-                printf("SDL_image could not initialize! SDL_image error: %s\n", IMG_GetError());
+                printf("Renderer could not be created! SDL Error: %s\n", SDL_GetError());
+                success = false;
             }
             else
             {
-                gScreenSurface = SDL_GetWindowSurface(gWindow);
+                SDL_SetRenderDrawColor(gRenderer, 0xFF, 0xFF, 0xFF, 0xFF);
+                
+                // SDL_image init
+                int imgFlags = IMG_INIT_PNG;
+                if(!(IMG_Init(imgFlags) & imgFlags))
+                {
+                    printf("SDL_image could not initialize! SDL_image error: %s\n", IMG_GetError());
+                }
             }
         }
     }
@@ -127,12 +138,35 @@ SDL_Surface* load_surface(std::string path)
     return optimizedSurface;
 }
 
+SDL_Texture* load_texture(std::string path)
+{
+    SDL_Texture* newTexture = NULL;
+    
+    SDL_Surface* loadedSurface = IMG_Load(path.c_str());
+    if(loadedSurface == NULL)
+    {
+        printf("Unable to load image %s! SDL_image Error: %s\n", path.c_str(), IMG_GetError());
+    }
+    else
+    {
+        newTexture = SDL_CreateTextureFromSurface(gRenderer, loadedSurface);
+        if(newTexture == NULL)
+        {
+            printf("Uanble to create texture from %s! SDL_image Error: %s\n", path.c_str(), IMG_GetError());
+        }
+        
+        SDL_FreeSurface(loadedSurface);
+    }
+    
+    return newTexture;
+}
+
 bool load_media()
 {
     bool success = true;
 
-    gCurrentSurface = load_surface("loaded.png");
-    if(gCurrentSurface == NULL)
+    gTexture = load_texture("loaded.png");
+    if(gTexture == NULL)
     {
         printf("Failed to load default image!\n");
         success = false;
@@ -143,9 +177,15 @@ bool load_media()
 
 void close()
 {
+    SDL_DestroyTexture(gTexture);
+    gTexture = NULL;
+    
+    SDL_DestroyRenderer(gRenderer);
     SDL_DestroyWindow(gWindow);
     gWindow = NULL;
+    gRenderer = NULL;
     
+    IMG_Quit();
     SDL_Quit();
 }
 
@@ -185,13 +225,9 @@ int main(int argc, char* args[])
             }
         }
         
-        SDL_Rect stretchRect;
-        stretchRect.x = 0;
-        stretchRect.y = 0;
-        stretchRect.w = SCREEN_WIDTH;
-        stretchRect.h = SCREEN_HEIGHT;
-        SDL_BlitScaled(gCurrentSurface, NULL, gScreenSurface, &stretchRect);
-        SDL_UpdateWindowSurface(gWindow);
+        SDL_RenderClear(gRenderer);
+        SDL_RenderCopy(gRenderer, gTexture, NULL, NULL);
+        SDL_RenderPresent(gRenderer);
     }
 
     close();
