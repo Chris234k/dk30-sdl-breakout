@@ -218,7 +218,7 @@ void close()
 }
 
 // NOTE(chris) deviating from the tutorial because i don't think we need a class for this
-void render_texture_at_pos(SDL_Texture* texture, int x, int y, SDL_Rect* clip)
+void render_texture_at_pos(SDL_Texture* texture, int x, int y, SDL_Rect* clip, double angle, SDL_Point* center, SDL_RendererFlip flip)
 {
     int w, h;
     SDL_QueryTexture(texture, NULL, NULL, &w, &h);
@@ -230,7 +230,7 @@ void render_texture_at_pos(SDL_Texture* texture, int x, int y, SDL_Rect* clip)
         renderQuad.h = clip->h;
     }
     
-    SDL_RenderCopy(gRenderer, texture, clip, &renderQuad);
+    SDL_RenderCopyEx(gRenderer, texture, clip, &renderQuad, angle, center, flip);
 }
 
 // NOTE(chris) ctrl + shift + b builds & runs! (see tasks.json)
@@ -243,6 +243,9 @@ int main(int argc, char* args[])
     
     bool quit = false;
     SDL_Event e;
+    
+    double degrees = 0;
+    SDL_RendererFlip flipType = SDL_FLIP_NONE;
     
     int frame = 0;
     
@@ -262,6 +265,26 @@ int main(int argc, char* args[])
                     quit = true;
                     break;
                     
+                    case SDLK_a:
+                    degrees -= 60;
+                    break;
+                    
+                    case SDLK_d:
+                    degrees += 60;
+                    break;
+
+                    case SDLK_q:
+                    flipType = SDL_FLIP_HORIZONTAL;
+                    break;
+
+                    case SDLK_w:
+                    flipType = SDL_FLIP_NONE;
+                    break;
+
+                    case SDLK_e:
+                    flipType = SDL_FLIP_VERTICAL;
+                    break;
+                    
                     default:
                     break;
                 }
@@ -275,7 +298,7 @@ int main(int argc, char* args[])
         // SDL_SetTextureAlphaMod(gSpriteSheetTexture, a);
         
         SDL_Rect* currentFrame = &gSpriteClips[frame / 4];
-        render_texture_at_pos(gSpriteSheetTexture, (SCREEN_WIDTH - currentFrame->w) / 2, (SCREEN_HEIGHT - currentFrame->h) / 2, currentFrame);
+        render_texture_at_pos(gSpriteSheetTexture, (SCREEN_WIDTH - currentFrame->w) / 2, (SCREEN_HEIGHT - currentFrame->h) / 2, currentFrame, degrees, NULL, flipType);
         
         SDL_RenderPresent(gRenderer);
         
