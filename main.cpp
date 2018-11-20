@@ -17,6 +17,8 @@ SDL_Surface* gScreenSurface = NULL;
 SDL_Renderer* gRenderer = NULL;
 SDL_Texture* gTexture = NULL;
 
+SDL_Texture* gFooTexture;
+SDL_Texture* gBackgroundTexture;
 
 void create_debug_console()
 {
@@ -149,6 +151,8 @@ SDL_Texture* load_texture(std::string path)
     }
     else
     {
+        SDL_SetColorKey(loadedSurface, SDL_TRUE, SDL_MapRGB(loadedSurface->format, 0, 0xFF, 0xFF)); // pixels that are cyan become transparent
+        
         newTexture = SDL_CreateTextureFromSurface(gRenderer, loadedSurface);
         if(newTexture == NULL)
         {
@@ -161,23 +165,18 @@ SDL_Texture* load_texture(std::string path)
     return newTexture;
 }
 
-bool load_media()
+void load_media()
 {
-    bool success = true;
-    
     gTexture = load_texture("loaded.png");
-    if(gTexture == NULL)
-    {
-        printf("Failed to load texture!");
-        success = false;
-    }
-
-    return success;
+    
+    gFooTexture = load_texture("foo.png");
+    gBackgroundTexture = load_texture("background.png");
 }
 
 void close()
 {
-    SDL_DestroyTexture(gTexture);
+    SDL_DestroyTexture(gFooTexture);
+    SDL_DestroyTexture(gBackgroundTexture);
     gTexture = NULL;
     
     SDL_DestroyRenderer(gRenderer);
@@ -187,6 +186,15 @@ void close()
     
     IMG_Quit();
     SDL_Quit();
+}
+
+// NOTE(chris) deviating from the tutorial because i don't think we need a class for this
+void render_texture_at_pos(SDL_Texture* texture, int x, int y)
+{
+    int w, h;
+    SDL_QueryTexture(texture, NULL, NULL, &w, &h);
+    SDL_Rect renderQuad = {x, y, w, h};
+    SDL_RenderCopy(gRenderer, texture, NULL, &renderQuad);
 }
 
 // NOTE(chris) ctrl + shift + b builds & runs! (see tasks.json)
@@ -228,46 +236,8 @@ int main(int argc, char* args[])
         SDL_SetRenderDrawColor(gRenderer, 0x00, 0x00, 0x00, 0xFF);
         SDL_RenderClear(gRenderer);
         
-        SDL_Rect fillRect = {SCREEN_WIDTH / 4, SCREEN_HEIGHT / 4, SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2};
-        SDL_SetRenderDrawColor(gRenderer, 0xFF, 0x00, 0x00, 0xFF);
-        SDL_RenderFillRect(gRenderer, &fillRect);
-        
-        SDL_Rect outlineRect = {SCREEN_WIDTH / 6, SCREEN_HEIGHT / 6, SCREEN_WIDTH * 2/3, SCREEN_HEIGHT * 2/3};
-        SDL_SetRenderDrawColor(gRenderer, 0x00, 0xFF, 0x00, 0xFF);
-        SDL_RenderDrawRect(gRenderer, &outlineRect);
-        
-        SDL_SetRenderDrawColor(gRenderer, 0x00, 0x00, 0xFF, 0xFF);
-        SDL_RenderDrawLine(gRenderer, 0, SCREEN_HEIGHT / 2, SCREEN_WIDTH, SCREEN_HEIGHT / 2);
-        
-        SDL_SetRenderDrawColor(gRenderer, 0xFF, 0xFF, 0x00, 0xFF);
-        for(int i = 0; i < SCREEN_HEIGHT; i += 4)
-        {
-            SDL_RenderDrawPoint(gRenderer, SCREEN_WIDTH / 2, i);
-        }
-        
-        SDL_Rect topLeftViewport;
-        topLeftViewport.x = 0;
-        topLeftViewport.y = 0;
-        topLeftViewport.w = SCREEN_WIDTH / 2;
-        topLeftViewport.h = SCREEN_HEIGHT / 2;
-        SDL_RenderSetViewport(gRenderer, &topLeftViewport);
-        SDL_RenderCopy(gRenderer, gTexture, NULL, NULL);
-        
-        SDL_Rect topRightViewport;
-        topRightViewport.x = SCREEN_WIDTH / 2;
-        topRightViewport.y = 0;
-        topRightViewport.w = SCREEN_WIDTH / 2;
-        topRightViewport.h = SCREEN_HEIGHT / 2;
-        SDL_RenderSetViewport(gRenderer, &topRightViewport);
-        SDL_RenderCopy(gRenderer, gTexture, NULL, NULL);
-        
-        SDL_Rect bottomViewport;
-        bottomViewport.x = 0;
-        bottomViewport.y = SCREEN_HEIGHT /2;
-        bottomViewport.w = SCREEN_WIDTH;
-        bottomViewport.h = SCREEN_HEIGHT / 2;
-        SDL_RenderSetViewport(gRenderer, &bottomViewport);
-        SDL_RenderCopy(gRenderer, gTexture, NULL, NULL);
+        render_texture_at_pos(gBackgroundTexture, 0, 0);
+        render_texture_at_pos(gFooTexture, 240, 190);
         
         SDL_RenderPresent(gRenderer);
     }
