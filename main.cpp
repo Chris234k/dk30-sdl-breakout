@@ -17,8 +17,8 @@ SDL_Surface* gScreenSurface = NULL;
 SDL_Renderer* gRenderer = NULL;
 SDL_Texture* gTexture = NULL;
 
-SDL_Texture* gFooTexture;
-SDL_Texture* gBackgroundTexture;
+SDL_Rect gSpriteClips[4];
+SDL_Texture* gSpriteSheetTexture;
 
 void create_debug_console()
 {
@@ -169,14 +169,34 @@ void load_media()
 {
     gTexture = load_texture("loaded.png");
     
-    gFooTexture = load_texture("foo.png");
-    gBackgroundTexture = load_texture("background.png");
+    gSpriteSheetTexture = load_texture("dots.png");
+    if(gSpriteSheetTexture != NULL)
+    {
+        gSpriteClips[0].x = 0;
+        gSpriteClips[0].y = 0;
+        gSpriteClips[0].w = 100;
+        gSpriteClips[0].h = 100;
+        
+        gSpriteClips[1].x = 100;
+        gSpriteClips[1].y = 0;
+        gSpriteClips[1].w = 100;
+        gSpriteClips[1].h = 100;
+        
+        gSpriteClips[2].x = 0;
+        gSpriteClips[2].y = 100;
+        gSpriteClips[2].w = 100;
+        gSpriteClips[2].h = 100;
+        
+        gSpriteClips[3].x = 100;
+        gSpriteClips[3].y = 100;
+        gSpriteClips[3].w = 100;
+        gSpriteClips[3].h = 100;
+    }
 }
 
 void close()
 {
-    SDL_DestroyTexture(gFooTexture);
-    SDL_DestroyTexture(gBackgroundTexture);
+    SDL_DestroyTexture(gSpriteSheetTexture);
     gTexture = NULL;
     
     SDL_DestroyRenderer(gRenderer);
@@ -189,12 +209,19 @@ void close()
 }
 
 // NOTE(chris) deviating from the tutorial because i don't think we need a class for this
-void render_texture_at_pos(SDL_Texture* texture, int x, int y)
+void render_texture_at_pos(SDL_Texture* texture, int x, int y, SDL_Rect* clip)
 {
     int w, h;
     SDL_QueryTexture(texture, NULL, NULL, &w, &h);
     SDL_Rect renderQuad = {x, y, w, h};
-    SDL_RenderCopy(gRenderer, texture, NULL, &renderQuad);
+    
+    if(clip != NULL)
+    {
+        renderQuad.w = clip->w;
+        renderQuad.h = clip->h;
+    }
+    
+    SDL_RenderCopy(gRenderer, texture, clip, &renderQuad);
 }
 
 // NOTE(chris) ctrl + shift + b builds & runs! (see tasks.json)
@@ -236,8 +263,10 @@ int main(int argc, char* args[])
         SDL_SetRenderDrawColor(gRenderer, 0x00, 0x00, 0x00, 0xFF);
         SDL_RenderClear(gRenderer);
         
-        render_texture_at_pos(gBackgroundTexture, 0, 0);
-        render_texture_at_pos(gFooTexture, 240, 190);
+        render_texture_at_pos(gSpriteSheetTexture, 0, 0, &gSpriteClips[0]); // TL
+        render_texture_at_pos(gSpriteSheetTexture, SCREEN_WIDTH - gSpriteClips[1].w, 0, &gSpriteClips[1]); // TR
+        render_texture_at_pos(gSpriteSheetTexture, 0, SCREEN_HEIGHT - gSpriteClips[2].h, &gSpriteClips[2]); // BL
+        render_texture_at_pos(gSpriteSheetTexture, SCREEN_WIDTH - gSpriteClips[3].w, SCREEN_HEIGHT - gSpriteClips[3].h, &gSpriteClips[3]); // BR
         
         SDL_RenderPresent(gRenderer);
     }
