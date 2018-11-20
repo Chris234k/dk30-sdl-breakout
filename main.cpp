@@ -164,6 +164,13 @@ SDL_Texture* load_texture(std::string path)
 bool load_media()
 {
     bool success = true;
+    
+    gTexture = load_texture("loaded.png");
+    if(gTexture == NULL)
+    {
+        printf("Failed to load texture!");
+        success = false;
+    }
 
     return success;
 }
@@ -237,6 +244,30 @@ int main(int argc, char* args[])
         {
             SDL_RenderDrawPoint(gRenderer, SCREEN_WIDTH / 2, i);
         }
+        
+        SDL_Rect topLeftViewport;
+        topLeftViewport.x = 0;
+        topLeftViewport.y = 0;
+        topLeftViewport.w = SCREEN_WIDTH / 2;
+        topLeftViewport.h = SCREEN_HEIGHT / 2;
+        SDL_RenderSetViewport(gRenderer, &topLeftViewport);
+        SDL_RenderCopy(gRenderer, gTexture, NULL, NULL);
+        
+        SDL_Rect topRightViewport;
+        topRightViewport.x = SCREEN_WIDTH / 2;
+        topRightViewport.y = 0;
+        topRightViewport.w = SCREEN_WIDTH / 2;
+        topRightViewport.h = SCREEN_HEIGHT / 2;
+        SDL_RenderSetViewport(gRenderer, &topRightViewport);
+        SDL_RenderCopy(gRenderer, gTexture, NULL, NULL);
+        
+        SDL_Rect bottomViewport;
+        bottomViewport.x = 0;
+        bottomViewport.y = SCREEN_HEIGHT /2;
+        bottomViewport.w = SCREEN_WIDTH;
+        bottomViewport.h = SCREEN_HEIGHT / 2;
+        SDL_RenderSetViewport(gRenderer, &bottomViewport);
+        SDL_RenderCopy(gRenderer, gTexture, NULL, NULL);
         
         SDL_RenderPresent(gRenderer);
     }
