@@ -17,7 +17,8 @@ SDL_Surface* gScreenSurface = NULL;
 SDL_Renderer* gRenderer = NULL;
 SDL_Texture* gTexture = NULL;
 
-SDL_Rect gSpriteClips[4];
+const int WALKING_ANIMATION_FRAMES = 4;
+SDL_Rect gSpriteClips[WALKING_ANIMATION_FRAMES];
 SDL_Texture* gSpriteSheetTexture;
 
 void create_debug_console()
@@ -92,7 +93,7 @@ bool init()
         }
         else
         {
-            gRenderer = SDL_CreateRenderer(gWindow, -1, SDL_RENDERER_ACCELERATED);
+            gRenderer = SDL_CreateRenderer(gWindow, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
             if(gRenderer == NULL)
             {
                 printf("Renderer could not be created! SDL Error: %s\n", SDL_GetError());
@@ -167,30 +168,36 @@ SDL_Texture* load_texture(std::string path)
 
 void load_media()
 {
-    gTexture = load_texture("loaded.png");
-    
-    gSpriteSheetTexture = load_texture("dots.png");
+    gSpriteSheetTexture = load_texture("foo.png");
     if(gSpriteSheetTexture != NULL)
     {
-        gSpriteClips[0].x = 0;
-        gSpriteClips[0].y = 0;
-        gSpriteClips[0].w = 100;
-        gSpriteClips[0].h = 100;
+        for(int i = 0; i < WALKING_ANIMATION_FRAMES; i++)
+        {
+            gSpriteClips[i].x = i * 64;
+            gSpriteClips[i].y = 0;
+            gSpriteClips[i].w = 64;
+            gSpriteClips[i].h = 205;
+        }
         
-        gSpriteClips[1].x = 100;
-        gSpriteClips[1].y = 0;
-        gSpriteClips[1].w = 100;
-        gSpriteClips[1].h = 100;
+        // gSpriteClips[0].x = 0;
+        // gSpriteClips[0].y = 0;
+        // gSpriteClips[0].w = 100;
+        // gSpriteClips[0].h = 100;
         
-        gSpriteClips[2].x = 0;
-        gSpriteClips[2].y = 100;
-        gSpriteClips[2].w = 100;
-        gSpriteClips[2].h = 100;
+        // gSpriteClips[1].x = 100;
+        // gSpriteClips[1].y = 0;
+        // gSpriteClips[1].w = 100;
+        // gSpriteClips[1].h = 100;
         
-        gSpriteClips[3].x = 100;
-        gSpriteClips[3].y = 100;
-        gSpriteClips[3].w = 100;
-        gSpriteClips[3].h = 100;
+        // gSpriteClips[2].x = 0;
+        // gSpriteClips[2].y = 100;
+        // gSpriteClips[2].w = 100;
+        // gSpriteClips[2].h = 100;
+        
+        // gSpriteClips[3].x = 100;
+        // gSpriteClips[3].y = 100;
+        // gSpriteClips[3].w = 100;
+        // gSpriteClips[3].h = 100;
     }
     
     SDL_SetTextureBlendMode(gSpriteSheetTexture, SDL_BLENDMODE_BLEND);
@@ -237,10 +244,7 @@ int main(int argc, char* args[])
     bool quit = false;
     SDL_Event e;
     
-    Uint8 r = 255;
-    Uint8 g = 255;
-    Uint8 b = 255;
-    Uint8 a = 255;
+    int frame = 0;
     
     while(!quit)
     {
@@ -258,71 +262,29 @@ int main(int argc, char* args[])
                     quit = true;
                     break;
                     
-                    case SDLK_q:
-                    r += 32;
-                    break;
-                    
-                    case SDLK_w:
-                    g += 32;
-                    break;
-                    
-                    case SDLK_e:
-                    b += 32;
-                    break;
-                    
-                    case SDLK_a:
-                    r -= 32;
-                    break;
-                    
-                    case SDLK_s:
-                    g -= 32;
-                    break;
-                    
-                    case SDLK_d:
-                    b -= 32;
-                    break;
-                    
                     default:
                     break;
-                }
-                
-                if(e.key.keysym.sym == SDLK_r)
-                {
-                    if(a + 32 > 255)
-                    {
-                        a = 255;
-                    }
-                    else
-                    {
-                        a += 32;
-                    }
-                }
-                else if(e.key.keysym.sym == SDLK_f)
-                {
-                    if(a - 32 < 0)
-                    {
-                        a = 0;
-                    }
-                    else
-                    {
-                        a -= 32;
-                    }
                 }
             }
         }
         
-        SDL_SetRenderDrawColor(gRenderer, 0x00, 0x00, 0x00, 0xFF);
+        SDL_SetRenderDrawColor(gRenderer, 0xFF, 0xFF, 0xFF, 0xFF);
         SDL_RenderClear(gRenderer);
         
-        SDL_SetTextureColorMod(gSpriteSheetTexture, r, g, b);
-        SDL_SetTextureAlphaMod(gSpriteSheetTexture, a);
+        // SDL_SetTextureColorMod(gSpriteSheetTexture, r, g, b);
+        // SDL_SetTextureAlphaMod(gSpriteSheetTexture, a);
         
-        render_texture_at_pos(gSpriteSheetTexture, 0, 0, &gSpriteClips[0]); // TL
-        render_texture_at_pos(gSpriteSheetTexture, SCREEN_WIDTH - gSpriteClips[1].w, 0, &gSpriteClips[1]); // TR
-        render_texture_at_pos(gSpriteSheetTexture, 0, SCREEN_HEIGHT - gSpriteClips[2].h, &gSpriteClips[2]); // BL
-        render_texture_at_pos(gSpriteSheetTexture, SCREEN_WIDTH - gSpriteClips[3].w, SCREEN_HEIGHT - gSpriteClips[3].h, &gSpriteClips[3]); // BR
+        SDL_Rect* currentFrame = &gSpriteClips[frame / 4];
+        render_texture_at_pos(gSpriteSheetTexture, (SCREEN_WIDTH - currentFrame->w) / 2, (SCREEN_HEIGHT - currentFrame->h) / 2, currentFrame);
         
         SDL_RenderPresent(gRenderer);
+        
+        ++frame;
+        
+        if(frame / 4 >= WALKING_ANIMATION_FRAMES)
+        {
+            frame = 0;
+        }
     }
 
     close();
