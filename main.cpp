@@ -228,15 +228,16 @@ void render_texture_at_pos(SDL_Texture* texture, int x, int y, SDL_Rect* clip)
 int main(int argc, char* args[])
 {
     init();
-    
     // TODO(chris) this should be debug builds only
     create_debug_console();
-    
     load_media();
     
     bool quit = false;
-
     SDL_Event e;
+    
+    Uint8 r = 255;
+    Uint8 g = 255;
+    Uint8 b = 255;
     
     while(!quit)
     {
@@ -254,6 +255,30 @@ int main(int argc, char* args[])
                     quit = true;
                     break;
                     
+                    case SDLK_q:
+                    r += 32;
+                    break;
+                    
+                    case SDLK_w:
+                    g += 32;
+                    break;
+                    
+                    case SDLK_e:
+                    b += 32;
+                    break;
+                    
+                    case SDLK_a:
+                    r -= 32;
+                    break;
+                    
+                    case SDLK_s:
+                    g -= 32;
+                    break;
+                    
+                    case SDLK_d:
+                    b -= 32;
+                    break;
+                    
                     default:
                     break;
                 }
@@ -262,6 +287,8 @@ int main(int argc, char* args[])
         
         SDL_SetRenderDrawColor(gRenderer, 0x00, 0x00, 0x00, 0xFF);
         SDL_RenderClear(gRenderer);
+        
+        SDL_SetTextureColorMod(gSpriteSheetTexture, r, g, b);
         
         render_texture_at_pos(gSpriteSheetTexture, 0, 0, &gSpriteClips[0]); // TL
         render_texture_at_pos(gSpriteSheetTexture, SCREEN_WIDTH - gSpriteClips[1].w, 0, &gSpriteClips[1]); // TR
