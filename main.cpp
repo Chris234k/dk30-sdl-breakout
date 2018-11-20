@@ -192,6 +192,8 @@ void load_media()
         gSpriteClips[3].w = 100;
         gSpriteClips[3].h = 100;
     }
+    
+    SDL_SetTextureBlendMode(gSpriteSheetTexture, SDL_BLENDMODE_BLEND);
 }
 
 void close()
@@ -238,6 +240,7 @@ int main(int argc, char* args[])
     Uint8 r = 255;
     Uint8 g = 255;
     Uint8 b = 255;
+    Uint8 a = 255;
     
     while(!quit)
     {
@@ -282,6 +285,29 @@ int main(int argc, char* args[])
                     default:
                     break;
                 }
+                
+                if(e.key.keysym.sym == SDLK_r)
+                {
+                    if(a + 32 > 255)
+                    {
+                        a = 255;
+                    }
+                    else
+                    {
+                        a += 32;
+                    }
+                }
+                else if(e.key.keysym.sym == SDLK_f)
+                {
+                    if(a - 32 < 0)
+                    {
+                        a = 0;
+                    }
+                    else
+                    {
+                        a -= 32;
+                    }
+                }
             }
         }
         
@@ -289,6 +315,7 @@ int main(int argc, char* args[])
         SDL_RenderClear(gRenderer);
         
         SDL_SetTextureColorMod(gSpriteSheetTexture, r, g, b);
+        SDL_SetTextureAlphaMod(gSpriteSheetTexture, a);
         
         render_texture_at_pos(gSpriteSheetTexture, 0, 0, &gSpriteClips[0]); // TL
         render_texture_at_pos(gSpriteSheetTexture, SCREEN_WIDTH - gSpriteClips[1].w, 0, &gSpriteClips[1]); // TR
