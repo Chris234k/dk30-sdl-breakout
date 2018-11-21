@@ -1,6 +1,8 @@
 #include "SDL.h"
 #include "SDL_syswm.h"
 #include <SDL_image.h>
+#include <SDL_ttf.h>
+
 #include <string>
 #include <stdio.h>
 #include <windows.h>
@@ -11,15 +13,12 @@ const int SCREEN_WIDTH = 640;
 const int SCREEN_HEIGHT = 480;
 
 SDL_Window* gWindow = NULL;
-
 SDL_Surface* gScreenSurface = NULL;
-
 SDL_Renderer* gRenderer = NULL;
-SDL_Texture* gTexture = NULL;
+SDL_Texture* gTextTexture = NULL;
+TTF_Font *gFont = NULL;
 
-const int WALKING_ANIMATION_FRAMES = 4;
-SDL_Rect gSpriteClips[WALKING_ANIMATION_FRAMES];
-SDL_Texture* gSpriteSheetTexture;
+float textureWidth, textureHeight;
 
 void create_debug_console()
 {
@@ -108,6 +107,13 @@ bool init()
                 if(!(IMG_Init(imgFlags) & imgFlags))
                 {
                     printf("SDL_image could not initialize! SDL_image error: %s\n", IMG_GetError());
+                    success = false;
+                }
+                
+                if(TTF_Init() == -1)
+                {
+                    printf("SDL_ttf could not initialize! SDL_ttf Error: %s\n", TTF_GetError());
+                    success = false;
                 }
             }
         }
@@ -168,45 +174,44 @@ SDL_Texture* load_texture(std::string path)
 
 void load_media()
 {
-    gSpriteSheetTexture = load_texture("foo.png");
-    if(gSpriteSheetTexture != NULL)
+    gFont = TTF_OpenFont("lazy.ttf", 28);
+    if(gFont == NULL)
     {
-        for(int i = 0; i < WALKING_ANIMATION_FRAMES; i++)
-        {
-            gSpriteClips[i].x = i * 64;
-            gSpriteClips[i].y = 0;
-            gSpriteClips[i].w = 64;
-            gSpriteClips[i].h = 205;
-        }
-        
-        // gSpriteClips[0].x = 0;
-        // gSpriteClips[0].y = 0;
-        // gSpriteClips[0].w = 100;
-        // gSpriteClips[0].h = 100;
-        
-        // gSpriteClips[1].x = 100;
-        // gSpriteClips[1].y = 0;
-        // gSpriteClips[1].w = 100;
-        // gSpriteClips[1].h = 100;
-        
-        // gSpriteClips[2].x = 0;
-        // gSpriteClips[2].y = 100;
-        // gSpriteClips[2].w = 100;
-        // gSpriteClips[2].h = 100;
-        
-        // gSpriteClips[3].x = 100;
-        // gSpriteClips[3].y = 100;
-        // gSpriteClips[3].w = 100;
-        // gSpriteClips[3].h = 100;
+        printf("Failed to load lazy font! SDL_ttf Error: %s\n", TTF_GetError());
     }
-    
-    SDL_SetTextureBlendMode(gSpriteSheetTexture, SDL_BLENDMODE_BLEND);
+    else
+    {
+        SDL_Color textColor = {0, 0, 0};
+        
+        SDL_Surface* textSurface = TTF_RenderText_Solid(gFont, "The quick brown fox jumps over the lazy dog", textColor);
+        if(textSurface == NULL)
+        {
+            printf("Unable to render text surface! SDL_ttf Error: %s\n", TTF_GetError());
+        }
+        else
+        {
+            gTextTexture = SDL_CreateTextureFromSurface(gRenderer, textSurface);
+            if(gTextTexture == NULL)
+            {
+                printf("Unable to create texture from renderered text! SDL_ttf Error: %s\n", TTF_GetError());
+            }
+            else
+            {
+                textureWidth = textSurface->w;
+                textureHeight = textSurface->h;
+            }
+            
+            SDL_FreeSurface(textSurface);
+        }
+    }
 }
 
 void close()
 {
-    SDL_DestroyTexture(gSpriteSheetTexture);
-    gTexture = NULL;
+    SDL_DestroyTexture(gTextTexture);
+    
+    TTF_CloseFont(gFont);
+    gFont = NULL;
     
     SDL_DestroyRenderer(gRenderer);
     SDL_DestroyWindow(gWindow);
@@ -218,7 +223,7 @@ void close()
 }
 
 // NOTE(chris) deviating from the tutorial because i don't think we need a class for this
-void render_texture_at_pos(SDL_Texture* texture, int x, int y, SDL_Rect* clip, double angle, SDL_Point* center, SDL_RendererFlip flip)
+void render_texture_at_pos(SDL_Texture* texture, int x, int y, SDL_Rect* clip = NULL, double angle = 0.0, SDL_Point* center = NULL, SDL_RendererFlip flip = SDL_FLIP_NONE)
 {
     int w, h;
     SDL_QueryTexture(texture, NULL, NULL, &w, &h);
@@ -244,11 +249,6 @@ int main(int argc, char* args[])
     bool quit = false;
     SDL_Event e;
     
-    double degrees = 0;
-    SDL_RendererFlip flipType = SDL_FLIP_NONE;
-    
-    int frame = 0;
-    
     while(!quit)
     {
         while(SDL_PollEvent(&e) != 0)
@@ -265,26 +265,6 @@ int main(int argc, char* args[])
                     quit = true;
                     break;
                     
-                    case SDLK_a:
-                    degrees -= 60;
-                    break;
-                    
-                    case SDLK_d:
-                    degrees += 60;
-                    break;
-
-                    case SDLK_q:
-                    flipType = SDL_FLIP_HORIZONTAL;
-                    break;
-
-                    case SDLK_w:
-                    flipType = SDL_FLIP_NONE;
-                    break;
-
-                    case SDLK_e:
-                    flipType = SDL_FLIP_VERTICAL;
-                    break;
-                    
                     default:
                     break;
                 }
@@ -294,20 +274,9 @@ int main(int argc, char* args[])
         SDL_SetRenderDrawColor(gRenderer, 0xFF, 0xFF, 0xFF, 0xFF);
         SDL_RenderClear(gRenderer);
         
-        // SDL_SetTextureColorMod(gSpriteSheetTexture, r, g, b);
-        // SDL_SetTextureAlphaMod(gSpriteSheetTexture, a);
-        
-        SDL_Rect* currentFrame = &gSpriteClips[frame / 4];
-        render_texture_at_pos(gSpriteSheetTexture, (SCREEN_WIDTH - currentFrame->w) / 2, (SCREEN_HEIGHT - currentFrame->h) / 2, currentFrame, degrees, NULL, flipType);
+        render_texture_at_pos(gTextTexture, (SCREEN_WIDTH - textureWidth) / 2, (SCREEN_HEIGHT - textureHeight) / 2);
         
         SDL_RenderPresent(gRenderer);
-        
-        ++frame;
-        
-        if(frame / 4 >= WALKING_ANIMATION_FRAMES)
-        {
-            frame = 0;
-        }
     }
 
     close();
