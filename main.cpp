@@ -122,7 +122,7 @@ bool init()
     return success;
 }
 
-SDL_Surface* load_surface(std::string path)
+SDL_Surface* load_surface_from_file(std::string path)
 {
     SDL_Surface* optimizedSurface = NULL;
     
@@ -147,7 +147,7 @@ SDL_Surface* load_surface(std::string path)
     return optimizedSurface;
 }
 
-SDL_Texture* load_texture(std::string path)
+SDL_Texture* load_texture_from_file(std::string path)
 {
     SDL_Texture* newTexture = NULL;
     
@@ -172,6 +172,34 @@ SDL_Texture* load_texture(std::string path)
     return newTexture;
 }
 
+SDL_Texture* load_text_from_rendered_text(std::string textureText, SDL_Color textColor)
+{
+    SDL_Texture* result = NULL;
+    
+    SDL_Surface* textSurface = TTF_RenderText_Solid(gFont, textureText.c_str(), textColor);
+    if(textSurface == NULL)
+    {
+        printf("Unable to render text surface! SDL_ttf Error: %s\n", TTF_GetError());
+    }
+    else
+    {
+        result = SDL_CreateTextureFromSurface(gRenderer, textSurface);
+        if(result == NULL)
+        {
+            printf("Unable to create texture from renderered text! SDL_ttf Error: %s\n", TTF_GetError());
+        }
+        else
+        {
+            textureWidth = textSurface->w;
+            textureHeight = textSurface->h;
+        }
+        
+        SDL_FreeSurface(textSurface);
+    }
+    
+    return result;
+}
+
 void load_media()
 {
     gFont = TTF_OpenFont("lazy.ttf", 28);
@@ -182,27 +210,7 @@ void load_media()
     else
     {
         SDL_Color textColor = {0, 0, 0};
-        
-        SDL_Surface* textSurface = TTF_RenderText_Solid(gFont, "The quick brown fox jumps over the lazy dog", textColor);
-        if(textSurface == NULL)
-        {
-            printf("Unable to render text surface! SDL_ttf Error: %s\n", TTF_GetError());
-        }
-        else
-        {
-            gTextTexture = SDL_CreateTextureFromSurface(gRenderer, textSurface);
-            if(gTextTexture == NULL)
-            {
-                printf("Unable to create texture from renderered text! SDL_ttf Error: %s\n", TTF_GetError());
-            }
-            else
-            {
-                textureWidth = textSurface->w;
-                textureHeight = textSurface->h;
-            }
-            
-            SDL_FreeSurface(textSurface);
-        }
+        gTextTexture = load_text_from_rendered_text("The quick brown fox jumps over the lazy dog", textColor);
     }
 }
 
