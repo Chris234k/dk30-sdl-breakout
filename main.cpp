@@ -5,9 +5,12 @@
 
 #include <string>
 #include <stdio.h>
-#include <windows.h>
 #include <iostream>
 #include <Fcntl.h>
+
+#ifdef _WIN32
+#include <windows.h>
+#endif
 
 const int SCREEN_WIDTH = 640;
 const int SCREEN_HEIGHT = 480;
@@ -20,6 +23,7 @@ TTF_Font *gFont = NULL;
 
 float textureWidth, textureHeight;
 
+#ifdef _WIN32
 void create_debug_console()
 {
     // Get the window handle (we need it below)
@@ -71,6 +75,7 @@ void create_debug_console()
     SetForegroundWindow(handle);                        // Slightly Higher Priority
     SetFocus(handle);                                   // Sets Keyboard Focus To The Window
 }
+#endif
 
 bool init()
 {
@@ -250,8 +255,12 @@ void render_texture_at_pos(SDL_Texture* texture, int x, int y, SDL_Rect* clip = 
 int main(int argc, char* args[])
 {
     init();
+    
+#ifdef _WIN32
     // TODO(chris) this should be debug builds only
     create_debug_console();
+#endif
+
     load_media();
     
     bool quit = false;

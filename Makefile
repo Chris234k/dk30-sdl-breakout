@@ -1,27 +1,16 @@
-#OBJS specifies which files to compile as part of the project
-OBJS = main.cpp
+# -I "include"
 
-#CC specifies which compiler we're using
-CC = g++
-
-#INCLUDE_PATHS specifies the additional include paths we'll need
-INCLUDE_PATHS = -IC:\mingw_dev_libs\include\SDL2
-
-#LIBRARY_PATHS specifies the additional library paths we'll need
-LIBRARY_PATHS = -LC:\mingw_dev_libs\lib
+# -L "libraries"
 
 #COMPILER_FLAGS specifies the additional compilation options we're using
 # -w suppresses all warnings
-# -Wl,-subsystem,windows gets rid of the console window
-# -static-libgcc -static-libstdc++ I believe this bakes a few dlls into the exe itself (std::string would fail without this)
-COMPILER_FLAGS = -w -Wl,-subsystem,windows -static-libgcc -static-libstdc++
+# -static-libgcc TODO(chris) not sure what this one does specifically
+# -static-libstdc++ bring namespace std into the build
 
-#LINKER_FLAGS specifies the libraries we're linking against
-LINKER_FLAGS = -lmingw32 -lSDL2main -lSDL2 -lSDL2_image -lSDL2_ttf
+#-o specifies the name of our exectuable
 
-#OBJ_NAME specifies the name of our exectuable
-OBJ_NAME = breakout
+windows:
+	g++ main.cpp -IC:/mingw_dev_libs/include/SDL2 -LC:/mingw_dev_libs/lib -w -static-libgcc -static-libstdc++ -lmingw32 -lSDL2main -lSDL2 -lSDL2_image -lSDL2_ttf -o breakout
 
-#This is the target that compiles our executable
-all : $(OBJS)
-	$(CC) $(OBJS) $(INCLUDE_PATHS) $(LIBRARY_PATHS) $(COMPILER_FLAGS) $(LINKER_FLAGS) -o $(OBJ_NAME)
+mac:
+	g++ main.cpp -Iinclude/SDL2 -Llib -w -static-libstdc++ -lSDL2main -lSDL2 -lSDL2_image -lSDL2_ttf -o breakout
