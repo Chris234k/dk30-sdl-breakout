@@ -52,7 +52,7 @@ struct LButton
 };
 
 SDL_Rect gSpriteClips[TOTAL_BUTTONS];
-SDL_Texture* gButtonSpriteSheetTexture;
+LTexture gButtonSpriteSheetTexture;
 
 LButton gButtons[TOTAL_BUTTONS];
 
@@ -112,7 +112,7 @@ void button_handleEvent(LButton& button, SDL_Event* e)
     }
 }
 
-SDL_Surface* load_surface_from_file(std::string path)
+SDL_Surface* create_surface_from_file(std::string path)
 {
     SDL_Surface* optimizedSurface = NULL;
     
@@ -137,7 +137,7 @@ SDL_Surface* load_surface_from_file(std::string path)
     return optimizedSurface;
 }
 
-SDL_Texture* load_texture_from_file(std::string path)
+SDL_Texture* create_texture_from_file(std::string path, int& width, int& height)
 {
     SDL_Texture* newTexture = NULL;
     
@@ -153,7 +153,12 @@ SDL_Texture* load_texture_from_file(std::string path)
         newTexture = SDL_CreateTextureFromSurface(gRenderer, loadedSurface);
         if(newTexture == NULL)
         {
-            printf("Uanble to create texture from %s! SDL_image Error: %s\n", path.c_str(), IMG_GetError());
+            printf("Unable to create texture from %s! SDL_image Error: %s\n", path.c_str(), IMG_GetError());
+        }
+        else
+        {
+            width = loadedSurface->w;
+            height = loadedSurface->h;
         }
         
         SDL_FreeSurface(loadedSurface);
@@ -163,7 +168,7 @@ SDL_Texture* load_texture_from_file(std::string path)
 }
 
 #ifdef _SDL_TTF_H
-SDL_Texture* load_texture_from_rendered_text(std::string textureText, int& width, int& height, SDL_Color textColor)
+SDL_Texture* create_texture_from_text(std::string textureText, int& width, int& height, SDL_Color textColor)
 {
     SDL_Texture* result = NULL;
     
@@ -193,11 +198,9 @@ SDL_Texture* load_texture_from_rendered_text(std::string textureText, int& width
 #endif
 
 // NOTE(chris) deviating from the tutorial because i don't think we need a class for this
-void render_texture_at_pos(SDL_Texture* texture, int x, int y, SDL_Rect* clip = NULL, double angle = 0.0, SDL_Point* center = NULL, SDL_RendererFlip flip = SDL_FLIP_NONE)
+void render_texture_at_pos(LTexture& texture, int x, int y, SDL_Rect* clip = NULL, double angle = 0.0, SDL_Point* center = NULL, SDL_RendererFlip flip = SDL_FLIP_NONE)
 {
-    int w, h;
-    SDL_QueryTexture(texture, NULL, NULL, &w, &h);
-    SDL_Rect renderQuad = {x, y, w, h};
+    SDL_Rect renderQuad = {x, y, texture.width, texture.height};
     
     if(clip != NULL)
     {
@@ -205,7 +208,7 @@ void render_texture_at_pos(SDL_Texture* texture, int x, int y, SDL_Rect* clip = 
         renderQuad.h = clip->h;
     }
     
-    SDL_RenderCopyEx(gRenderer, texture, clip, &renderQuad, angle, center, flip);
+    SDL_RenderCopyEx(gRenderer, texture.texture, clip, &renderQuad, angle, center, flip);
 }
 
 // NOTE(chris) ctrl + shift + b builds & runs! (see tasks.json)
@@ -267,10 +270,10 @@ int main(int argc, char* args[])
         else
         {
             SDL_Color textColor = {0, 0, 0};
-            gTextTexture.texture = load_texture_from_rendered_text("The quick brown fox jumps over the lazy dog", gTextTexture.width, gTextTexture.height, textColor);
+            gTextTexture.texture = create_texture_from_text("The quick brown fox jumps over the lazy dog", gTextTexture.width, gTextTexture.height, textColor);
         }
         
-        gButtonSpriteSheetTexture = load_texture_from_file("button.png");
+        gButtonSpriteSheetTexture.texture = create_texture_from_file("button.png", gButtonSpriteSheetTexture.width, gButtonSpriteSheetTexture.height);
         
         for(int i = 0; i < BUTTON_SPRITE_TOTAL; ++i)
         {
@@ -354,6 +357,7 @@ int main(int argc, char* args[])
 
     { // close
         SDL_DestroyTexture(gTextTexture.texture);
+        SDL_DestroyTexture(gButtonSpriteSheetTexture.texture);
     
         TTF_CloseFont(gFont);
         gFont = NULL;
