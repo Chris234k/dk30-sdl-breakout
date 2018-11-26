@@ -15,6 +15,8 @@
 
 const int SCREEN_WIDTH = 640;
 const int SCREEN_HEIGHT = 480;
+const int SCREEN_FPS = 60;
+const int SCREEN_TICKS_PER_FRAME = 1000 / SCREEN_FPS;
 
 SDL_Window* gWindow = NULL;
 SDL_Surface* gScreenSurface = NULL;
@@ -232,7 +234,7 @@ int main(int argc, char* args[])
             }
             else
             {
-                gRenderer = SDL_CreateRenderer(gWindow, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
+                gRenderer = SDL_CreateRenderer(gWindow, -1, SDL_RENDERER_ACCELERATED);
                 if(gRenderer == NULL)
                 {
                     printf("Renderer could not be created! SDL Error: %s\n", SDL_GetError());
@@ -295,10 +297,13 @@ int main(int argc, char* args[])
     std::stringstream timeText;
     
     int countedFrames = 0;  
-    Uint32 startTime = SDL_GetTicks();
+    Uint32 appTimer = SDL_GetTicks();
+    Uint32 frameTimer;
     
     while(!quit)
     {
+        frameTimer = SDL_GetTicks();
+        
         while(SDL_PollEvent(&e) != 0)
         {
             if(e.type == SDL_QUIT)
@@ -343,7 +348,7 @@ int main(int argc, char* args[])
             }
         }
         
-        float averageFPS = countedFrames / ((SDL_GetTicks() - startTime) / 1000.0f);
+        float averageFPS = countedFrames / ((SDL_GetTicks() - appTimer) / 1000.0f);
         
         if(averageFPS > 2000000) averageFPS = 0;
         
@@ -361,6 +366,13 @@ int main(int argc, char* args[])
         
         SDL_RenderPresent(gRenderer);
         ++countedFrames;
+        
+        // Wait until we reach 60 FPS (in case the frame completes early)
+        int frameTicks = SDL_GetTicks() - frameTimer;
+        if(frameTicks < SCREEN_TICKS_PER_FRAME)
+        {
+            SDL_Delay(SCREEN_TICKS_PER_FRAME - frameTicks);
+        }
     }
 
     { // close
