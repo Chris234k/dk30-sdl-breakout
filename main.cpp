@@ -35,37 +35,27 @@ enum LButtonSprite
     BUTTON_SPRITE_MOUSE_DOWN = 2,
     BUTTON_SPRITE_MOUSE_UP = 3,
     
-    BUTTON_SPRITE_MOUSE_TOTAL = 4
+    BUTTON_SPRITE_TOTAL = 4
 };
 
-class LButton
+struct LButton
 {
-    public:
-    LButton();
-    
     SDL_Point position;
-    
-    void handleEvent(SDL_Event* e);
-    
-    void render();
-    
     LButtonSprite currentSprite;
 };
 
-SDL_Rect gSpriteClips[4];
+SDL_Rect gSpriteClips[TOTAL_BUTTONS];
 SDL_Texture* gButtonSpriteSheetTexture;
 
 LButton gButtons[TOTAL_BUTTONS];
 
-LButton::LButton()
+void button_set_positions(LButton* button, int x, int y)
 {
-    position.x = 0;
-    position.y = 0;
-    
-    currentSprite = BUTTON_SPRITE_MOUSE_OUT;
+    button->position.x = x;
+    button->position.y = y;
 }
 
-void LButton::handleEvent(SDL_Event* e)
+void button_handleEvent(LButton* button, SDL_Event* e)
 {
     if(e->type == SDL_MOUSEMOTION || e->type == SDL_MOUSEBUTTONDOWN || e->type == SDL_MOUSEBUTTONUP)
     {
@@ -74,19 +64,19 @@ void LButton::handleEvent(SDL_Event* e)
         
         bool inside = true;
         
-        if(x < position.x)
+        if(x < button->position.x)
         {
             inside = false;
         }
-        else if(x > position.x + BUTTON_WIDTH)
+        else if(x > button->position.x + BUTTON_WIDTH)
         {
             inside = false;
         }
-        else if(y < position.y)
+        else if(y < button->position.y)
         {
             inside = false;
         }
-        else if(y > position.y + BUTTON_HEIGHT)
+        else if(y > button->position.y + BUTTON_HEIGHT)
         {
             inside = false;
         }
@@ -96,28 +86,23 @@ void LButton::handleEvent(SDL_Event* e)
            switch(e-> type)
            {
                case SDL_MOUSEMOTION:
-               currentSprite = BUTTON_SPRITE_MOUSE_OVER_MOTION;
+               button->currentSprite = BUTTON_SPRITE_MOUSE_OVER_MOTION;
                break;
                
                case SDL_MOUSEBUTTONDOWN:
-               currentSprite = BUTTON_SPRITE_MOUSE_DOWN;
+               button->currentSprite = BUTTON_SPRITE_MOUSE_DOWN;
                break;
                
                case SDL_MOUSEBUTTONUP:
-               currentSprite = BUTTON_SPRITE_MOUSE_UP;
+               button->currentSprite = BUTTON_SPRITE_MOUSE_UP;
                break;
            }
         }
         else
         {
-            currentSprite = BUTTON_SPRITE_MOUSE_OUT; 
+            button->currentSprite = BUTTON_SPRITE_MOUSE_OUT; 
         }
     }
-}
-
-void LButton::render()
-{
-    render_texture_at_pos(gButtonSpriteSheetTexture, position.x, position.y, &gSpriteClips[currentSprite]);
 }
 
 SDL_Surface* load_surface_from_file(std::string path)
@@ -331,6 +316,21 @@ int main(int argc, char* args[])
             SDL_Color textColor = {0, 0, 0};
             gTextTexture = load_text_from_rendered_text("The quick brown fox jumps over the lazy dog", textColor);
         }
+        
+        gButtonSpriteSheetTexture = load_texture_from_file("button.png");
+        
+        for(int i = 0; i < BUTTON_SPRITE_TOTAL; ++i)
+        {
+            gSpriteClips[i].x = 0;
+            gSpriteClips[i].y = i * 200;
+            gSpriteClips[i].w = BUTTON_WIDTH;
+            gSpriteClips[i].h = BUTTON_HEIGHT;
+        }
+        
+        button_set_positions(&gButtons[0], 0, 0);
+        button_set_positions(&gButtons[1], SCREEN_WIDTH - BUTTON_WIDTH, 0);
+        button_set_positions(&gButtons[2], 0, SCREEN_HEIGHT - BUTTON_HEIGHT);
+        button_set_positions(&gButtons[3], SCREEN_WIDTH - BUTTON_WIDTH, SCREEN_HEIGHT - BUTTON_HEIGHT);
     }
     
     bool quit = false;
@@ -359,7 +359,7 @@ int main(int argc, char* args[])
             
             for(int i = 0; i < TOTAL_BUTTONS; ++i)
             {
-                gButtons[i].handleEvent(&e);
+                button_handleEvent(&gButtons[i], &e);
             }
         }
         
@@ -368,7 +368,7 @@ int main(int argc, char* args[])
         
         for(int i = 0; i < TOTAL_BUTTONS; ++i)
         {
-            gButtons[i].render();
+            render_texture_at_pos(gButtonSpriteSheetTexture, gButtons[i].position.x, gButtons[i].position.y, &gSpriteClips[gButtons[i].currentSprite]);
         }
         
         SDL_RenderPresent(gRenderer);
