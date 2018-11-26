@@ -15,7 +15,7 @@
                 "showReuseMessage": true
             },
             "args": [
-                "all"
+                "windows"
             ],
             "problemMatcher": {
                 "owner": "cpp",
