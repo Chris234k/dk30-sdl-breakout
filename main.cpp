@@ -307,6 +307,25 @@ int main(int argc, char* args[])
             {
                 button_handleEvent(&gButtons[i], &e);
             }
+            
+            // NOTE(Chris) this is anther method of detecting input
+            const Uint8* currentKeyStates = SDL_GetKeyboardState(NULL);
+            if(currentKeyStates[SDL_SCANCODE_UP])
+            {
+                printf("up!\n");
+            }
+            else if(currentKeyStates[SDL_SCANCODE_DOWN])
+            {
+                printf("down!\n");
+            }
+            else if(currentKeyStates[SDL_SCANCODE_LEFT])
+            {
+                printf("left!\n");
+            }
+            else if(currentKeyStates[SDL_SCANCODE_RIGHT])
+            {
+                printf("right!\n");
+            }
         }
         
         SDL_SetRenderDrawColor(gRenderer, 0xFF, 0xFF, 0xFF, 0xFF);
