@@ -18,10 +18,17 @@ const int SCREEN_HEIGHT = 480;
 SDL_Window* gWindow = NULL;
 SDL_Surface* gScreenSurface = NULL;
 SDL_Renderer* gRenderer = NULL;
-SDL_Texture* gTextTexture = NULL;
 TTF_Font *gFont = NULL;
 
 float textureWidth, textureHeight;
+
+struct LTexture
+{
+    SDL_Texture* texture;
+    int width, height;
+};
+
+LTexture gTextTexture;
 
 
 const int BUTTON_WIDTH = 300;
@@ -49,13 +56,13 @@ SDL_Texture* gButtonSpriteSheetTexture;
 
 LButton gButtons[TOTAL_BUTTONS];
 
-void button_set_positions(LButton* button, int x, int y)
+void button_set_positions(LButton& button, int x, int y)
 {
-    button->position.x = x;
-    button->position.y = y;
+    button.position.x = x;
+    button.position.y = y;
 }
 
-void button_handleEvent(LButton* button, SDL_Event* e)
+void button_handleEvent(LButton& button, SDL_Event* e)
 {
     if(e->type == SDL_MOUSEMOTION || e->type == SDL_MOUSEBUTTONDOWN || e->type == SDL_MOUSEBUTTONUP)
     {
@@ -64,19 +71,19 @@ void button_handleEvent(LButton* button, SDL_Event* e)
         
         bool inside = true;
         
-        if(x < button->position.x)
+        if(x < button.position.x)
         {
             inside = false;
         }
-        else if(x > button->position.x + BUTTON_WIDTH)
+        else if(x > button.position.x + BUTTON_WIDTH)
         {
             inside = false;
         }
-        else if(y < button->position.y)
+        else if(y < button.position.y)
         {
             inside = false;
         }
-        else if(y > button->position.y + BUTTON_HEIGHT)
+        else if(y > button.position.y + BUTTON_HEIGHT)
         {
             inside = false;
         }
@@ -86,21 +93,21 @@ void button_handleEvent(LButton* button, SDL_Event* e)
            switch(e-> type)
            {
                case SDL_MOUSEMOTION:
-               button->currentSprite = BUTTON_SPRITE_MOUSE_OVER_MOTION;
+               button.currentSprite = BUTTON_SPRITE_MOUSE_OVER_MOTION;
                break;
                
                case SDL_MOUSEBUTTONDOWN:
-               button->currentSprite = BUTTON_SPRITE_MOUSE_DOWN;
+               button.currentSprite = BUTTON_SPRITE_MOUSE_DOWN;
                break;
                
                case SDL_MOUSEBUTTONUP:
-               button->currentSprite = BUTTON_SPRITE_MOUSE_UP;
+               button.currentSprite = BUTTON_SPRITE_MOUSE_UP;
                break;
            }
         }
         else
         {
-            button->currentSprite = BUTTON_SPRITE_MOUSE_OUT; 
+            button.currentSprite = BUTTON_SPRITE_MOUSE_OUT; 
         }
     }
 }
@@ -156,7 +163,7 @@ SDL_Texture* load_texture_from_file(std::string path)
 }
 
 #ifdef _SDL_TTF_H
-SDL_Texture* load_text_from_rendered_text(std::string textureText, SDL_Color textColor)
+SDL_Texture* load_texture_from_rendered_text(std::string textureText, int& width, int& height, SDL_Color textColor)
 {
     SDL_Texture* result = NULL;
     
@@ -174,8 +181,8 @@ SDL_Texture* load_text_from_rendered_text(std::string textureText, SDL_Color tex
         }
         else
         {
-            textureWidth = textSurface->w;
-            textureHeight = textSurface->h;
+            width = textSurface->w;
+            height = textSurface->h;
         }
         
         SDL_FreeSurface(textSurface);
@@ -260,7 +267,7 @@ int main(int argc, char* args[])
         else
         {
             SDL_Color textColor = {0, 0, 0};
-            gTextTexture = load_text_from_rendered_text("The quick brown fox jumps over the lazy dog", textColor);
+            gTextTexture.texture = load_texture_from_rendered_text("The quick brown fox jumps over the lazy dog", gTextTexture.width, gTextTexture.height, textColor);
         }
         
         gButtonSpriteSheetTexture = load_texture_from_file("button.png");
@@ -273,14 +280,17 @@ int main(int argc, char* args[])
             gSpriteClips[i].h = BUTTON_HEIGHT;
         }
         
-        button_set_positions(&gButtons[0], 0, 0);
-        button_set_positions(&gButtons[1], SCREEN_WIDTH - BUTTON_WIDTH, 0);
-        button_set_positions(&gButtons[2], 0, SCREEN_HEIGHT - BUTTON_HEIGHT);
-        button_set_positions(&gButtons[3], SCREEN_WIDTH - BUTTON_WIDTH, SCREEN_HEIGHT - BUTTON_HEIGHT);
+        button_set_positions(gButtons[0], 0, 0);
+        button_set_positions(gButtons[1], SCREEN_WIDTH - BUTTON_WIDTH, 0);
+        button_set_positions(gButtons[2], 0, SCREEN_HEIGHT - BUTTON_HEIGHT);
+        button_set_positions(gButtons[3], SCREEN_WIDTH - BUTTON_WIDTH, SCREEN_HEIGHT - BUTTON_HEIGHT);
     }
     
     bool quit = false;
     SDL_Event e;
+    
+    int countedFrames = 0;  
+    Uint32 startTime = SDL_GetTicks();
     
     while(!quit)
     {
@@ -305,7 +315,7 @@ int main(int argc, char* args[])
             
             for(int i = 0; i < TOTAL_BUTTONS; ++i)
             {
-                button_handleEvent(&gButtons[i], &e);
+                button_handleEvent(gButtons[i], &e);
             }
             
             // NOTE(Chris) this is anther method of detecting input
@@ -328,8 +338,10 @@ int main(int argc, char* args[])
             }
         }
         
+        float average_fps = countedFrames / (SDL_GetTicks() - startTime);
+        
         SDL_SetRenderDrawColor(gRenderer, 0xFF, 0xFF, 0xFF, 0xFF);
-        SDL_RenderClear(gRenderer);
+        SDL_RenderClear(gRenderer); 
         
         for(int i = 0; i < TOTAL_BUTTONS; ++i)
         {
@@ -337,10 +349,11 @@ int main(int argc, char* args[])
         }
         
         SDL_RenderPresent(gRenderer);
+        ++countedFrames;
     }
 
     { // close
-        SDL_DestroyTexture(gTextTexture);
+        SDL_DestroyTexture(gTextTexture.texture);
     
         TTF_CloseFont(gFont);
         gFont = NULL;
