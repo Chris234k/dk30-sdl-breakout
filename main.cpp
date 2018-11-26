@@ -6,6 +6,7 @@
 #include <string>
 #include <stdio.h>
 #include <iostream>
+#include <sstream>
 #include <Fcntl.h>
 
 #ifdef _WIN32
@@ -19,8 +20,6 @@ SDL_Window* gWindow = NULL;
 SDL_Surface* gScreenSurface = NULL;
 SDL_Renderer* gRenderer = NULL;
 TTF_Font *gFont = NULL;
-
-float textureWidth, textureHeight;
 
 struct LTexture
 {
@@ -267,11 +266,11 @@ int main(int argc, char* args[])
         {
             printf("Failed to load lazy font! SDL_ttf Error: %s\n", TTF_GetError());
         }
-        else
-        {
-            SDL_Color textColor = {0, 0, 0};
-            gTextTexture.texture = create_texture_from_text("The quick brown fox jumps over the lazy dog", gTextTexture.width, gTextTexture.height, textColor);
-        }
+        // else
+        // {
+        //     SDL_Color textColor = {0, 0, 0};
+        //     gTextTexture.texture = create_texture_from_text("", gTextTexture.width, gTextTexture.height, textColor);
+        // }
         
         gButtonSpriteSheetTexture.texture = create_texture_from_file("button.png", gButtonSpriteSheetTexture.width, gButtonSpriteSheetTexture.height);
         
@@ -291,6 +290,9 @@ int main(int argc, char* args[])
     
     bool quit = false;
     SDL_Event e;
+    
+    SDL_Color textColor = {0, 0, 0, 255};
+    std::stringstream timeText;
     
     int countedFrames = 0;  
     Uint32 startTime = SDL_GetTicks();
@@ -341,15 +343,21 @@ int main(int argc, char* args[])
             }
         }
         
-        float average_fps = countedFrames / (SDL_GetTicks() - startTime);
+        float averageFPS = countedFrames / ((SDL_GetTicks() - startTime) / 1000.0f);
+        
+        if(averageFPS > 2000000) averageFPS = 0;
+        
+        timeText.str("");
+        timeText << "FPS: " << averageFPS;
+        
+        gTextTexture.texture = create_texture_from_text(timeText.str().c_str(), gTextTexture.width, gTextTexture.height, textColor);
         
         SDL_SetRenderDrawColor(gRenderer, 0xFF, 0xFF, 0xFF, 0xFF);
         SDL_RenderClear(gRenderer); 
         
-        for(int i = 0; i < TOTAL_BUTTONS; ++i)
-        {
-            render_texture_at_pos(gButtonSpriteSheetTexture, gButtons[i].position.x, gButtons[i].position.y, &gSpriteClips[gButtons[i].currentSprite]);
-        }
+        render_texture_at_pos(gTextTexture, 0, 0);
+        
+        render_texture_at_pos(gButtonSpriteSheetTexture, gButtons[3].position.x, gButtons[3].position.y, &gSpriteClips[gButtons[3].currentSprite]);
         
         SDL_RenderPresent(gRenderer);
         ++countedFrames;
