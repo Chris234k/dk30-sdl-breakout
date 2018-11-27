@@ -15,13 +15,26 @@
 
 bool check_collision(SDL_Rect a, SDL_Rect b); // TODO(chris) just shoving this here so i don't have to move functions around... need to cleanup
 
+struct LWindow
+{
+    SDL_Window* window;
+    
+    int width;
+    int height;
+    
+    bool mouseFocus;
+    bool keyboardFocus;
+    bool fullScreen;
+    bool minimized;
+};
 
 const int SCREEN_WIDTH = 640;
 const int SCREEN_HEIGHT = 480;
 const int SCREEN_FPS = 60;
 const int SCREEN_TICKS_PER_FRAME = 1000 / SCREEN_FPS;
 
-SDL_Window* gWindow = NULL;
+LWindow gWindow;
+
 SDL_Surface* gScreenSurface = NULL;
 SDL_Renderer* gRenderer = NULL;
 TTF_Font *gFont = NULL;
@@ -101,7 +114,7 @@ void button_set_positions(LButton& button, int x, int y)
     button.position.y = y;
 }
 
-void button_handleEvent(LButton& button, SDL_Event* e)
+void button_handle_event(LButton& button, SDL_Event* e)
 {
     if(e->type == SDL_MOUSEMOTION || e->type == SDL_MOUSEBUTTONDOWN || e->type == SDL_MOUSEBUTTONUP)
     {
@@ -236,6 +249,80 @@ SDL_Texture* create_texture_from_text(std::string textureText, int& width, int& 
 }
 #endif
 
+void window_handle_event(LWindow& window, SDL_Event& e)
+{
+    if(e.type == SDL_WINDOWEVENT)
+    {
+        bool updateCaption = false;
+        
+        switch(e.window.event)
+        {
+            case SDL_WINDOWEVENT_SIZE_CHANGED:
+            window.width = e.window.data1;
+            window.height = e.window.data2;
+            SDL_RenderPresent(gRenderer);
+            break;
+            
+            case SDL_WINDOWEVENT_EXPOSED: // The window was obscured in some way and is now no longer obscured
+            SDL_RenderPresent(gRenderer);
+            break;
+            
+            case SDL_WINDOWEVENT_ENTER:
+            window.mouseFocus = true;
+            updateCaption = true;
+            break;
+            
+            case SDL_WINDOWEVENT_LEAVE:
+            window.mouseFocus = false;
+            updateCaption = true;
+            break;
+            
+            case SDL_WINDOWEVENT_FOCUS_GAINED:
+            window.keyboardFocus = true;
+            updateCaption = true;
+            break;
+            
+            case SDL_WINDOWEVENT_FOCUS_LOST:
+            window.keyboardFocus = false;
+            updateCaption = true;
+            break;
+            
+            case SDL_WINDOWEVENT_MINIMIZED:
+            window.minimized = true;
+            break;
+            
+            case SDL_WINDOWEVENT_MAXIMIZED:
+            window.minimized = false;
+            break;
+            
+            case SDL_WINDOWEVENT_RESTORED:
+            window.minimized = false;
+            break;
+        }
+        
+        if(updateCaption)
+        {
+            std::stringstream caption;
+            caption << "Breakout - MouseFocus: " << ((window.mouseFocus) ? "On" : "Off") << " KeyboardFocus: " << ((window.keyboardFocus) ? "On" : "Off");
+            SDL_SetWindowTitle(window.window, caption.str().c_str());
+        }
+    }
+    else if(e.type == SDL_KEYDOWN && e.key.keysym.sym == SDLK_RETURN)
+    {
+        if(window.fullScreen)
+        {
+            SDL_SetWindowFullscreen(window.window, SDL_FALSE);
+            window.fullScreen = false;
+        }
+        else
+        {
+            SDL_SetWindowFullscreen(window.window, SDL_TRUE);
+            window.fullScreen = true;
+            window.minimized = false;
+        }
+    }
+}
+
 // NOTE(chris) deviating from the tutorial because i don't think we need a class for this
 void render_texture_at_pos(LTexture& texture, int x, int y, SDL_Rect* clip = NULL, double angle = 0.0, SDL_Point* center = NULL, SDL_RendererFlip flip = SDL_FLIP_NONE)
 {
@@ -290,15 +377,15 @@ int main(int argc, char* args[])
         else
         {
             // Window creation
-            gWindow = SDL_CreateWindow("Breakout", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_SHOWN);
-            if(gWindow == NULL)
+            gWindow.window = SDL_CreateWindow("Breakout", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
+            if(gWindow.window == NULL)
             {
                 printf("Window could not be created! SDL_Error: %s\n", SDL_GetError());
                 success = false;
             }
             else
             {
-                gRenderer = SDL_CreateRenderer(gWindow, -1, SDL_RENDERER_ACCELERATED);
+                gRenderer = SDL_CreateRenderer(gWindow.window, -1, SDL_RENDERER_ACCELERATED);
                 if(gRenderer == NULL)
                 {
                     printf("Renderer could not be created! SDL Error: %s\n", SDL_GetError());
@@ -364,7 +451,7 @@ int main(int argc, char* args[])
     SDL_Color textColor = {0, 0, 0, 255};
     std::stringstream timeText;
     
-    int countedFrames = 0;  
+    int countedFrames = 0;
     Uint32 appTimer = SDL_GetTicks();
     Uint32 frameTimer;
     
@@ -397,9 +484,11 @@ int main(int argc, char* args[])
                 }
             }
             
+            window_handle_event(gWindow, e);
+            
             for(int i = 0; i < TOTAL_BUTTONS; ++i)
             {
-                button_handleEvent(gButtons[i], &e);
+                button_handle_event(gButtons[i], &e);
             }
             
             dot.velX = 0;
@@ -435,36 +524,39 @@ int main(int argc, char* args[])
             // }
         }
         
-        dot_move(dot, wall);
-        
-        float averageFPS = countedFrames / ((SDL_GetTicks() - appTimer) / 1000.0f);
-        
-        if(averageFPS > 2000000) averageFPS = 0;
-        
-        timeText.str("");
-        timeText << "FPS: " << averageFPS;
-        
-        gTextTexture.texture = create_texture_from_text(timeText.str().c_str(), gTextTexture.width, gTextTexture.height, textColor);
-        
-        SDL_SetRenderDrawColor(gRenderer, 0xFF, 0xFF, 0xFF, 0xFF);
-        SDL_RenderClear(gRenderer); 
-        
-        render_texture_at_pos(gTextTexture, 0, 0);
-        render_texture_at_pos(gButtonSpriteSheetTexture, gButtons[3].position.x, gButtons[3].position.y, &gSpriteClips[gButtons[3].currentState]);
-        
-        SDL_SetRenderDrawColor(gRenderer, 0x00, 0x00, 0x00, 0xFF);
-        SDL_RenderDrawRect(gRenderer, &wall);
-        
-        render_texture_at_pos(dotTexture, dot.posX, dot.posY);
-        
-        SDL_RenderPresent(gRenderer);
-        ++countedFrames;
-        
-        // Wait until we reach 60 FPS (in case the frame completes early)
-        int frameTicks = SDL_GetTicks() - frameTimer;
-        if(frameTicks < SCREEN_TICKS_PER_FRAME)
+        if(!gWindow.minimized)
         {
-            SDL_Delay(SCREEN_TICKS_PER_FRAME - frameTicks);
+            dot_move(dot, wall);
+            
+            float averageFPS = countedFrames / ((SDL_GetTicks() - appTimer) / 1000.0f);
+            
+            if(averageFPS > 2000000) averageFPS = 0;
+            
+            timeText.str("");
+            timeText << "FPS: " << averageFPS;
+            
+            gTextTexture.texture = create_texture_from_text(timeText.str().c_str(), gTextTexture.width, gTextTexture.height, textColor);
+            
+            SDL_SetRenderDrawColor(gRenderer, 0xFF, 0xFF, 0xFF, 0xFF);
+            SDL_RenderClear(gRenderer); 
+            
+            render_texture_at_pos(gTextTexture, 0, 0);
+            render_texture_at_pos(gButtonSpriteSheetTexture, gButtons[3].position.x, gButtons[3].position.y, &gSpriteClips[gButtons[3].currentState]);
+            
+            SDL_SetRenderDrawColor(gRenderer, 0x00, 0x00, 0x00, 0xFF);
+            SDL_RenderDrawRect(gRenderer, &wall);
+            
+            render_texture_at_pos(dotTexture, dot.posX, dot.posY);
+            
+            SDL_RenderPresent(gRenderer);
+            ++countedFrames;
+            
+            // Wait until we reach 60 FPS (in case the frame completes early)
+            int frameTicks = SDL_GetTicks() - frameTimer;
+            if(frameTicks < SCREEN_TICKS_PER_FRAME)
+            {
+                SDL_Delay(SCREEN_TICKS_PER_FRAME - frameTicks);
+            }
         }
     }
 
@@ -477,8 +569,8 @@ int main(int argc, char* args[])
         gFont = NULL;
         
         SDL_DestroyRenderer(gRenderer);
-        SDL_DestroyWindow(gWindow);
-        gWindow = NULL;
+        SDL_DestroyWindow(gWindow.window);
+        gWindow.window = NULL;
         gRenderer = NULL;
         
         IMG_Quit();
