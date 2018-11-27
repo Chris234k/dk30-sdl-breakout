@@ -58,7 +58,6 @@ struct Transform
 };
 
 Transform paddle;
-LTexture paddleTexture;
 SDL_Rect wall;
 
 void transform_move(Transform& transform, SDL_Rect& wall)
@@ -423,10 +422,6 @@ int main(int argc, char* args[])
         //     gTextTexture.texture = create_texture_from_text("", gTextTexture.width, gTextTexture.height, textColor);
         // }
         
-        paddleTexture.texture = create_texture_from_file("dot.png", paddleTexture.width, paddleTexture.height);
-        paddle.collider.w = paddleTexture.width;
-        paddle.collider.h = paddleTexture.height;
-        
         gButtonSpriteSheetTexture.texture = create_texture_from_file("button.png", gButtonSpriteSheetTexture.width, gButtonSpriteSheetTexture.height);
         
         for(int i = 0; i < BUTTON_SPRITE_TOTAL; ++i)
@@ -452,6 +447,12 @@ int main(int argc, char* args[])
     int countedFrames = 0;
     Uint32 appTimer = SDL_GetTicks();
     Uint32 frameTimer;
+    
+    paddle.collider.w = 100;
+    paddle.collider.h = 40;
+    
+    paddle.posX = gWindow.width / 2;
+    paddle.posY = gWindow.height - 30;
     
     // TODO(chris) dot and wall are both just globals... consider making them local
     wall.x = 300;
@@ -495,8 +496,8 @@ int main(int argc, char* args[])
             {
                 switch(e.key.keysym.sym)
                 {
-                    case SDLK_UP: paddle.velY = -MOVE_VEL; break;
-                    case SDLK_DOWN: paddle.velY = MOVE_VEL; break;
+                    // case SDLK_UP: paddle.velY = -MOVE_VEL; break;
+                    // case SDLK_DOWN: paddle.velY = MOVE_VEL; break;
                     case SDLK_LEFT: paddle.velX = -MOVE_VEL; break;
                     case SDLK_RIGHT: paddle.velX = MOVE_VEL; break;
                 }
@@ -525,7 +526,8 @@ int main(int argc, char* args[])
             SDL_SetRenderDrawColor(gRenderer, 0x00, 0x00, 0x00, 0xFF);
             SDL_RenderDrawRect(gRenderer, &wall);
             
-            render_texture_at_pos(paddleTexture, paddle.posX, paddle.posY);
+            SDL_SetRenderDrawColor(gRenderer, 0x00, 0x00, 0x00, 0xFF);
+            SDL_RenderFillRect(gRenderer, &paddle.collider);
             
             SDL_RenderPresent(gRenderer);
             ++countedFrames;
@@ -542,7 +544,6 @@ int main(int argc, char* args[])
     { // close
         SDL_DestroyTexture(gTextTexture.texture);
         SDL_DestroyTexture(gButtonSpriteSheetTexture.texture);
-        SDL_DestroyTexture(paddleTexture.texture);
     
         TTF_CloseFont(gFont);
         gFont = NULL;
