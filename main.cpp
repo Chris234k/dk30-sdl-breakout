@@ -47,11 +47,9 @@ struct LTexture
 
 LTexture gTextTexture;
 
-const int DOT_WIDTH = 20;
-const int DOT_HEIGHT = 20;
-const int DOT_VEL = 10;
+const int MOVE_VEL = 10;
 
-struct Dot
+struct Transform
 {
     int posX, posY;
     int velX, velY;
@@ -59,28 +57,28 @@ struct Dot
     SDL_Rect collider;
 };
 
-Dot dot;
-LTexture dotTexture;
+Transform paddle;
+LTexture paddleTexture;
 SDL_Rect wall;
 
-void dot_move(Dot& dot, SDL_Rect& wall)
+void transform_move(Transform& transform, SDL_Rect& wall)
 {
-    dot.posX += dot.velX;
-    dot.collider.x = dot.posX;
+    transform.posX += transform.velX;
+    transform.collider.x = transform.posX;
     
-    if(dot.posX < 0 || dot.posX + DOT_WIDTH > SCREEN_WIDTH || check_collision(dot.collider, wall))
+    if(transform.posX < 0 || transform.posX + transform.collider.w > gWindow.width || check_collision(transform.collider, wall))
     {
-        dot.posX -= dot.velX;
-        dot.collider.x = dot.posX;
+        transform.posX -= transform.velX;
+        transform.collider.x = transform.posX;
     }
     
-    dot.posY += dot.velY;
-    dot.collider.y = dot.posY;
+    transform.posY += transform.velY;
+    transform.collider.y = transform.posY;
     
-    if(dot.posY < 0 || dot.posY + DOT_HEIGHT > SCREEN_HEIGHT || check_collision(dot.collider, wall))
+    if(transform.posY < 0 || transform.posY + transform.collider.h > gWindow.height || check_collision(transform.collider, wall))
     {
-        dot.posY -= dot.velY;
-        dot.collider.y = dot.posY;
+        transform.posY -= transform.velY;
+        transform.collider.y = transform.posY;
     }
 }
 
@@ -200,8 +198,6 @@ SDL_Texture* create_texture_from_file(std::string path, int& width, int& height)
     }
     else
     {
-        SDL_SetColorKey(loadedSurface, SDL_TRUE, SDL_MapRGB(loadedSurface->format, 0, 0xFF, 0xFF)); // pixels that are cyan become transparent
-        
         newTexture = SDL_CreateTextureFromSurface(gRenderer, loadedSurface);
         if(newTexture == NULL)
         {
@@ -377,7 +373,9 @@ int main(int argc, char* args[])
         else
         {
             // Window creation
-            gWindow.window = SDL_CreateWindow("Breakout", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
+            gWindow.window = SDL_CreateWindow("Breakout", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_RESIZABLE);
+            gWindow.width = SCREEN_WIDTH;
+            gWindow.height = SCREEN_HEIGHT;
             if(gWindow.window == NULL)
             {
                 printf("Window could not be created! SDL_Error: %s\n", SDL_GetError());
@@ -425,9 +423,9 @@ int main(int argc, char* args[])
         //     gTextTexture.texture = create_texture_from_text("", gTextTexture.width, gTextTexture.height, textColor);
         // }
         
-        dotTexture.texture = create_texture_from_file("dot.png", dotTexture.width, dotTexture.height);
-        dot.collider.w = dotTexture.width;
-        dot.collider.h = dotTexture.height;
+        paddleTexture.texture = create_texture_from_file("dot.png", paddleTexture.width, paddleTexture.height);
+        paddle.collider.w = paddleTexture.width;
+        paddle.collider.h = paddleTexture.height;
         
         gButtonSpriteSheetTexture.texture = create_texture_from_file("button.png", gButtonSpriteSheetTexture.width, gButtonSpriteSheetTexture.height);
         
@@ -440,9 +438,9 @@ int main(int argc, char* args[])
         }
         
         button_set_positions(gButtons[0], 0, 0);
-        button_set_positions(gButtons[1], SCREEN_WIDTH - BUTTON_WIDTH, 0);
-        button_set_positions(gButtons[2], 0, SCREEN_HEIGHT - BUTTON_HEIGHT);
-        button_set_positions(gButtons[3], SCREEN_WIDTH - BUTTON_WIDTH, SCREEN_HEIGHT - BUTTON_HEIGHT);
+        button_set_positions(gButtons[1], gWindow.width - BUTTON_WIDTH, 0);
+        button_set_positions(gButtons[2], 0, gWindow.height - BUTTON_HEIGHT);
+        button_set_positions(gButtons[3], gWindow.width - BUTTON_WIDTH, gWindow.height - BUTTON_HEIGHT);
     }
     
     bool quit = false;
@@ -491,42 +489,23 @@ int main(int argc, char* args[])
                 button_handle_event(gButtons[i], &e);
             }
             
-            dot.velX = 0;
-            dot.velY = 0;
+            paddle.velX = 0;
+            paddle.velY = 0;
             if(e.type == SDL_KEYDOWN)
             {
                 switch(e.key.keysym.sym)
                 {
-                    case SDLK_UP: dot.velY = -DOT_VEL; break;
-                    case SDLK_DOWN: dot.velY = DOT_VEL; break;
-                    case SDLK_LEFT: dot.velX = -DOT_VEL; break;
-                    case SDLK_RIGHT: dot.velX = DOT_VEL; break;
+                    case SDLK_UP: paddle.velY = -MOVE_VEL; break;
+                    case SDLK_DOWN: paddle.velY = MOVE_VEL; break;
+                    case SDLK_LEFT: paddle.velX = -MOVE_VEL; break;
+                    case SDLK_RIGHT: paddle.velX = MOVE_VEL; break;
                 }
             }
-            
-            // NOTE(Chris) this is anther method of detecting input
-            // const Uint8* currentKeyStates = SDL_GetKeyboardState(NULL);
-            // if(currentKeyStates[SDL_SCANCODE_UP])
-            // {
-            //     printf("up!\n");
-            // }
-            // else if(currentKeyStates[SDL_SCANCODE_DOWN])
-            // {
-            //     printf("down!\n");
-            // }
-            // else if(currentKeyStates[SDL_SCANCODE_LEFT])
-            // {
-            //     printf("left!\n");
-            // }
-            // else if(currentKeyStates[SDL_SCANCODE_RIGHT])
-            // {
-            //     printf("right!\n");
-            // }
         }
         
         if(!gWindow.minimized)
         {
-            dot_move(dot, wall);
+            transform_move(paddle, wall);
             
             float averageFPS = countedFrames / ((SDL_GetTicks() - appTimer) / 1000.0f);
             
@@ -546,7 +525,7 @@ int main(int argc, char* args[])
             SDL_SetRenderDrawColor(gRenderer, 0x00, 0x00, 0x00, 0xFF);
             SDL_RenderDrawRect(gRenderer, &wall);
             
-            render_texture_at_pos(dotTexture, dot.posX, dot.posY);
+            render_texture_at_pos(paddleTexture, paddle.posX, paddle.posY);
             
             SDL_RenderPresent(gRenderer);
             ++countedFrames;
@@ -563,7 +542,7 @@ int main(int argc, char* args[])
     { // close
         SDL_DestroyTexture(gTextTexture.texture);
         SDL_DestroyTexture(gButtonSpriteSheetTexture.texture);
-        SDL_DestroyTexture(dotTexture.texture);
+        SDL_DestroyTexture(paddleTexture.texture);
     
         TTF_CloseFont(gFont);
         gFont = NULL;
