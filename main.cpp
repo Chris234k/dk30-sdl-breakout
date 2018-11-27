@@ -49,6 +49,12 @@ LTexture gTextTexture;
 
 const int MOVE_VEL = 10;
 
+struct Block
+{
+    bool isActive;
+    SDL_Rect collider;
+};
+
 struct Transform
 {
     int posX, posY;
@@ -57,15 +63,12 @@ struct Transform
     SDL_Rect collider;
 };
 
-Transform paddle;
-SDL_Rect wall;
-
-void transform_move(Transform& transform, SDL_Rect& wall)
+void transform_move(Transform& transform)
 {
     transform.posX += transform.velX;
     transform.collider.x = transform.posX;
     
-    if(transform.posX < 0 || transform.posX + transform.collider.w > gWindow.width || check_collision(transform.collider, wall))
+    if(transform.posX < 0 || transform.posX + transform.collider.w > gWindow.width)
     {
         transform.posX -= transform.velX;
         transform.collider.x = transform.posX;
@@ -74,7 +77,7 @@ void transform_move(Transform& transform, SDL_Rect& wall)
     transform.posY += transform.velY;
     transform.collider.y = transform.posY;
     
-    if(transform.posY < 0 || transform.posY + transform.collider.h > gWindow.height || check_collision(transform.collider, wall))
+    if(transform.posY < 0 || transform.posY + transform.collider.h > gWindow.height)
     {
         transform.posY -= transform.velY;
         transform.collider.y = transform.posY;
@@ -438,6 +441,7 @@ int main(int argc, char* args[])
         button_set_positions(gButtons[3], gWindow.width - BUTTON_WIDTH, gWindow.height - BUTTON_HEIGHT);
     }
     
+    // Platform
     bool quit = false;
     SDL_Event e;
     
@@ -448,17 +452,30 @@ int main(int argc, char* args[])
     Uint32 appTimer = SDL_GetTicks();
     Uint32 frameTimer;
     
+    // Game
+    Transform paddle;
+    
     paddle.collider.w = 100;
     paddle.collider.h = 40;
-    
     paddle.posX = gWindow.width / 2;
     paddle.posY = gWindow.height - 30;
     
-    // TODO(chris) dot and wall are both just globals... consider making them local
-    wall.x = 300;
-    wall.y = 40;
-    wall.w = 40;
-    wall.h = 400;
+    const int BLOCKS_PER_ROW = 12;
+    Block blocks[BLOCKS_PER_ROW];
+    int blockSpacing = 3;
+    int blockWidth = (gWindow.width / BLOCKS_PER_ROW) - blockSpacing;
+    
+    for(int i = 0; i < BLOCKS_PER_ROW; ++i)
+    {
+        blocks[i].collider.x = (i * blockWidth) + (i * blockSpacing);
+        blocks[i].collider.y = (gWindow.height / 4);
+        
+        blocks[i].collider.w = blockWidth;
+        blocks[i].collider.h = 20;
+        
+        blocks[i].isActive = true;
+    }
+    
     
     while(!quit)
     {
@@ -506,7 +523,7 @@ int main(int argc, char* args[])
         
         if(!gWindow.minimized)
         {
-            transform_move(paddle, wall);
+            transform_move(paddle);
             
             float averageFPS = countedFrames / ((SDL_GetTicks() - appTimer) / 1000.0f);
             
@@ -521,10 +538,16 @@ int main(int argc, char* args[])
             SDL_RenderClear(gRenderer); 
             
             render_texture_at_pos(gTextTexture, 0, 0);
-            render_texture_at_pos(gButtonSpriteSheetTexture, gButtons[3].position.x, gButtons[3].position.y, &gSpriteClips[gButtons[3].currentState]);
+            // render_texture_at_pos(gButtonSpriteSheetTexture, gButtons[3].position.x, gButtons[3].position.y, &gSpriteClips[gButtons[3].currentState]);
             
-            SDL_SetRenderDrawColor(gRenderer, 0x00, 0x00, 0x00, 0xFF);
-            SDL_RenderDrawRect(gRenderer, &wall);
+            SDL_SetRenderDrawColor(gRenderer, 0xFF, 0x00, 0x00, 0xFF);
+            for(int i = 0; i < BLOCKS_PER_ROW; ++i)
+            {
+                if(blocks[i].isActive)
+                {
+                    SDL_RenderFillRect(gRenderer, &blocks[i].collider);
+                }
+            }
             
             SDL_SetRenderDrawColor(gRenderer, 0x00, 0x00, 0x00, 0xFF);
             SDL_RenderFillRect(gRenderer, &paddle.collider);
