@@ -13,6 +13,9 @@
 #include <windows.h>
 #endif
 
+bool check_collision(SDL_Rect a, SDL_Rect b); // TODO(chris) just shoving this here so i don't have to move functions around... need to cleanup
+
+
 const int SCREEN_WIDTH = 640;
 const int SCREEN_HEIGHT = 480;
 const int SCREEN_FPS = 60;
@@ -39,25 +42,32 @@ struct Dot
 {
     int posX, posY;
     int velX, velY;
+    
+    SDL_Rect collider;
 };
 
-LTexture dotTexture;
 Dot dot;
+LTexture dotTexture;
+SDL_Rect wall;
 
-void dot_move(Dot& dot)
+void dot_move(Dot& dot, SDL_Rect& wall)
 {
     dot.posX += dot.velX;
+    dot.collider.x = dot.posX;
     
-    if(dot.posX < 0 || dot.posX + DOT_WIDTH > SCREEN_WIDTH) 
+    if(dot.posX < 0 || dot.posX + DOT_WIDTH > SCREEN_WIDTH || check_collision(dot.collider, wall))
     {
         dot.posX -= dot.velX;
+        dot.collider.x = dot.posX;
     }
     
     dot.posY += dot.velY;
+    dot.collider.y = dot.posY;
     
-    if(dot.posY < 0 || dot.posY + DOT_HEIGHT > SCREEN_HEIGHT) 
+    if(dot.posY < 0 || dot.posY + DOT_HEIGHT > SCREEN_HEIGHT || check_collision(dot.collider, wall))
     {
         dot.posY -= dot.velY;
+        dot.collider.y = dot.posY;
     }
 }
 
@@ -240,6 +250,32 @@ void render_texture_at_pos(LTexture& texture, int x, int y, SDL_Rect* clip = NUL
     SDL_RenderCopyEx(gRenderer, texture.texture, clip, &renderQuad, angle, center, flip);
 }
 
+bool check_collision(SDL_Rect a, SDL_Rect b)
+{
+    int leftA, leftB;
+    int rightA, rightB;
+    int topA, topB;
+    int bottomA, bottomB;
+    
+    leftA = a.x;
+    rightA = a.x + a.w;
+    topA = a.y;
+    bottomA = a.y + a.h;
+    
+    leftB = b.x;
+    rightB = b.x + b.w;
+    topB = b.y;
+    bottomB = b.y + b.h;
+    
+    // Detect if any sides of A are outside of B
+    if(bottomA <= topB) return false;
+    if(topA >= bottomB) return false;
+    if(rightA <= leftB) return false;
+    if(leftA >= rightB) return false;
+    
+    return true;
+}
+
 // NOTE(chris) ctrl + shift + b builds & runs! (see tasks.json)
 int main(int argc, char* args[])
 {
@@ -303,6 +339,9 @@ int main(int argc, char* args[])
         // }
         
         dotTexture.texture = create_texture_from_file("dot.png", dotTexture.width, dotTexture.height);
+        dot.collider.w = dotTexture.width;
+        dot.collider.h = dotTexture.height;
+        
         gButtonSpriteSheetTexture.texture = create_texture_from_file("button.png", gButtonSpriteSheetTexture.width, gButtonSpriteSheetTexture.height);
         
         for(int i = 0; i < BUTTON_SPRITE_TOTAL; ++i)
@@ -328,6 +367,12 @@ int main(int argc, char* args[])
     int countedFrames = 0;  
     Uint32 appTimer = SDL_GetTicks();
     Uint32 frameTimer;
+    
+    // TODO(chris) dot and wall are both just globals... consider making them local
+    wall.x = 300;
+    wall.y = 40;
+    wall.w = 40;
+    wall.h = 400;
     
     while(!quit)
     {
@@ -370,26 +415,26 @@ int main(int argc, char* args[])
             }
             
             // NOTE(Chris) this is anther method of detecting input
-            const Uint8* currentKeyStates = SDL_GetKeyboardState(NULL);
-            if(currentKeyStates[SDL_SCANCODE_UP])
-            {
-                printf("up!\n");
-            }
-            else if(currentKeyStates[SDL_SCANCODE_DOWN])
-            {
-                printf("down!\n");
-            }
-            else if(currentKeyStates[SDL_SCANCODE_LEFT])
-            {
-                printf("left!\n");
-            }
-            else if(currentKeyStates[SDL_SCANCODE_RIGHT])
-            {
-                printf("right!\n");
-            }
+            // const Uint8* currentKeyStates = SDL_GetKeyboardState(NULL);
+            // if(currentKeyStates[SDL_SCANCODE_UP])
+            // {
+            //     printf("up!\n");
+            // }
+            // else if(currentKeyStates[SDL_SCANCODE_DOWN])
+            // {
+            //     printf("down!\n");
+            // }
+            // else if(currentKeyStates[SDL_SCANCODE_LEFT])
+            // {
+            //     printf("left!\n");
+            // }
+            // else if(currentKeyStates[SDL_SCANCODE_RIGHT])
+            // {
+            //     printf("right!\n");
+            // }
         }
         
-        dot_move(dot);
+        dot_move(dot, wall);
         
         float averageFPS = countedFrames / ((SDL_GetTicks() - appTimer) / 1000.0f);
         
@@ -405,6 +450,10 @@ int main(int argc, char* args[])
         
         render_texture_at_pos(gTextTexture, 0, 0);
         render_texture_at_pos(gButtonSpriteSheetTexture, gButtons[3].position.x, gButtons[3].position.y, &gSpriteClips[gButtons[3].currentState]);
+        
+        SDL_SetRenderDrawColor(gRenderer, 0x00, 0x00, 0x00, 0xFF);
+        SDL_RenderDrawRect(gRenderer, &wall);
+        
         render_texture_at_pos(dotTexture, dot.posX, dot.posY);
         
         SDL_RenderPresent(gRenderer);
