@@ -13,8 +13,6 @@
 #include <windows.h>
 #endif
 
-bool check_collision(SDL_Rect a, SDL_Rect b); // TODO(chris) just shoving this here so i don't have to move functions around... need to cleanup
-
 struct LWindow
 {
     SDL_Window* window;
@@ -28,26 +26,12 @@ struct LWindow
     bool minimized;
 };
 
-const int SCREEN_WIDTH = 640;
-const int SCREEN_HEIGHT = 480;
-const int SCREEN_FPS = 60;
-const int SCREEN_TICKS_PER_FRAME = 1000 / SCREEN_FPS;
-
-LWindow gWindow;
-
-SDL_Surface* gScreenSurface = NULL;
-SDL_Renderer* gRenderer = NULL;
-TTF_Font *gFont = NULL;
-
 struct LTexture
 {
     SDL_Texture* texture;
     int width, height;
 };
 
-LTexture gTextTexture;
-
-const int MOVE_VEL = 10;
 
 struct Block
 {
@@ -62,31 +46,6 @@ struct Transform
     
     SDL_Rect collider;
 };
-
-void transform_move(Transform& transform)
-{
-    transform.posX += transform.velX;
-    transform.collider.x = transform.posX;
-    
-    if(transform.posX < 0 || transform.posX + transform.collider.w > gWindow.width)
-    {
-        transform.posX -= transform.velX;
-        transform.collider.x = transform.posX;
-    }
-    
-    transform.posY += transform.velY;
-    transform.collider.y = transform.posY;
-    
-    if(transform.posY < 0 || transform.posY + transform.collider.h > gWindow.height)
-    {
-        transform.posY -= transform.velY;
-        transform.collider.y = transform.posY;
-    }
-}
-
-const int BUTTON_WIDTH = 300;
-const int BUTTON_HEIGHT = 200;
-const int TOTAL_BUTTONS = 4;
 
 enum LButtonState
 {
@@ -104,65 +63,29 @@ struct LButton
     LButtonState currentState;
 };
 
+const int SCREEN_WIDTH = 640;
+const int SCREEN_HEIGHT = 480;
+const int SCREEN_FPS = 60;
+const int SCREEN_TICKS_PER_FRAME = 1000 / SCREEN_FPS;
+
+LWindow gWindow;
+
+SDL_Surface* gScreenSurface = NULL;
+SDL_Renderer* gRenderer = NULL;
+TTF_Font *gFont = NULL;
+
+LTexture gTextTexture;
+
+const int MOVE_VEL = 10;
+const int BALL_VEL = 3;
+
+const int BUTTON_WIDTH = 300;
+const int BUTTON_HEIGHT = 200;
+const int TOTAL_BUTTONS = 4;
+
 SDL_Rect gSpriteClips[TOTAL_BUTTONS];
 LTexture gButtonSpriteSheetTexture;
 LButton gButtons[TOTAL_BUTTONS];
-
-void button_set_positions(LButton& button, int x, int y)
-{
-    button.position.x = x;
-    button.position.y = y;
-}
-
-void button_handle_event(LButton& button, SDL_Event* e)
-{
-    if(e->type == SDL_MOUSEMOTION || e->type == SDL_MOUSEBUTTONDOWN || e->type == SDL_MOUSEBUTTONUP)
-    {
-        int x, y;
-        SDL_GetMouseState(&x, &y);
-        
-        bool inside = true;
-        
-        if(x < button.position.x)
-        {
-            inside = false;
-        }
-        else if(x > button.position.x + BUTTON_WIDTH)
-        {
-            inside = false;
-        }
-        else if(y < button.position.y)
-        {
-            inside = false;
-        }
-        else if(y > button.position.y + BUTTON_HEIGHT)
-        {
-            inside = false;
-        }
-        
-        if(inside)
-        {
-           switch(e-> type)
-           {
-               case SDL_MOUSEMOTION:
-               button.currentState = BUTTON_SPRITE_MOUSE_OVER_MOTION;
-               break;
-               
-               case SDL_MOUSEBUTTONDOWN:
-               button.currentState = BUTTON_SPRITE_MOUSE_DOWN;
-               break;
-               
-               case SDL_MOUSEBUTTONUP:
-               button.currentState = BUTTON_SPRITE_MOUSE_UP;
-               break;
-           }
-        }
-        else
-        {
-            button.currentState = BUTTON_SPRITE_MOUSE_OUT; 
-        }
-    }
-}
 
 SDL_Surface* create_surface_from_file(std::string path)
 {
@@ -247,6 +170,135 @@ SDL_Texture* create_texture_from_text(std::string textureText, int& width, int& 
 }
 #endif
 
+void render_texture_at_pos(LTexture& texture, int x, int y, SDL_Rect* clip = NULL, double angle = 0.0, SDL_Point* center = NULL, SDL_RendererFlip flip = SDL_FLIP_NONE)
+{
+    SDL_Rect renderQuad = {x, y, texture.width, texture.height};
+    
+    if(clip != NULL)
+    {
+        renderQuad.w = clip->w;
+        renderQuad.h = clip->h;
+    }
+    
+    SDL_RenderCopyEx(gRenderer, texture.texture, clip, &renderQuad, angle, center, flip);
+}
+
+bool check_collision(SDL_Rect a, SDL_Rect b)
+{
+    int leftA, leftB;
+    int rightA, rightB;
+    int topA, topB;
+    int bottomA, bottomB;
+    
+    leftA = a.x;
+    rightA = a.x + a.w;
+    topA = a.y;
+    bottomA = a.y + a.h;
+    
+    leftB = b.x;
+    rightB = b.x + b.w;
+    topB = b.y;
+    bottomB = b.y + b.h;
+    
+    // Detect if any sides of A are outside of B
+    if(bottomA <= topB) return false;
+    if(topA >= bottomB) return false;
+    if(rightA <= leftB) return false;
+    if(leftA >= rightB) return false;
+    
+    return true;
+}
+
+bool check_window_collision_x(Transform transform)
+{
+    return (transform.posX < 0 || transform.posX + transform.collider.w > gWindow.width);
+} 
+
+bool check_window_collision_y(Transform transform)
+{
+    return (transform.posY < 0 || transform.posY + transform.collider.h > gWindow.height);
+}
+
+void transform_move(Transform& transform)
+{
+    transform.posX += transform.velX;
+    transform.collider.x = transform.posX;
+    
+    transform.posY += transform.velY;
+    transform.collider.y = transform.posY;
+}
+
+void transform_keep_on_screen(Transform& transform)
+{
+    if(check_window_collision_x(transform))
+    {
+        transform.posX -= transform.velX;
+        transform.collider.x = transform.posX;
+    }
+    
+    if(check_window_collision_y(transform))
+    {
+        transform.posY -= transform.velY;
+        transform.collider.y = transform.posY;
+    }
+}
+
+void button_set_positions(LButton& button, int x, int y)
+{
+    button.position.x = x;
+    button.position.y = y;
+}
+
+void button_handle_event(LButton& button, SDL_Event* e)
+{
+    if(e->type == SDL_MOUSEMOTION || e->type == SDL_MOUSEBUTTONDOWN || e->type == SDL_MOUSEBUTTONUP)
+    {
+        int x, y;
+        SDL_GetMouseState(&x, &y);
+        
+        bool inside = true;
+        
+        if(x < button.position.x)
+        {
+            inside = false;
+        }
+        else if(x > button.position.x + BUTTON_WIDTH)
+        {
+            inside = false;
+        }
+        else if(y < button.position.y)
+        {
+            inside = false;
+        }
+        else if(y > button.position.y + BUTTON_HEIGHT)
+        {
+            inside = false;
+        }
+        
+        if(inside)
+        {
+           switch(e-> type)
+           {
+               case SDL_MOUSEMOTION:
+               button.currentState = BUTTON_SPRITE_MOUSE_OVER_MOTION;
+               break;
+               
+               case SDL_MOUSEBUTTONDOWN:
+               button.currentState = BUTTON_SPRITE_MOUSE_DOWN;
+               break;
+               
+               case SDL_MOUSEBUTTONUP:
+               button.currentState = BUTTON_SPRITE_MOUSE_UP;
+               break;
+           }
+        }
+        else
+        {
+            button.currentState = BUTTON_SPRITE_MOUSE_OUT; 
+        }
+    }
+}
+
 void window_handle_event(LWindow& window, SDL_Event& e)
 {
     if(e.type == SDL_WINDOWEVENT)
@@ -321,45 +373,6 @@ void window_handle_event(LWindow& window, SDL_Event& e)
     }
 }
 
-// NOTE(chris) deviating from the tutorial because i don't think we need a class for this
-void render_texture_at_pos(LTexture& texture, int x, int y, SDL_Rect* clip = NULL, double angle = 0.0, SDL_Point* center = NULL, SDL_RendererFlip flip = SDL_FLIP_NONE)
-{
-    SDL_Rect renderQuad = {x, y, texture.width, texture.height};
-    
-    if(clip != NULL)
-    {
-        renderQuad.w = clip->w;
-        renderQuad.h = clip->h;
-    }
-    
-    SDL_RenderCopyEx(gRenderer, texture.texture, clip, &renderQuad, angle, center, flip);
-}
-
-bool check_collision(SDL_Rect a, SDL_Rect b)
-{
-    int leftA, leftB;
-    int rightA, rightB;
-    int topA, topB;
-    int bottomA, bottomB;
-    
-    leftA = a.x;
-    rightA = a.x + a.w;
-    topA = a.y;
-    bottomA = a.y + a.h;
-    
-    leftB = b.x;
-    rightB = b.x + b.w;
-    topB = b.y;
-    bottomB = b.y + b.h;
-    
-    // Detect if any sides of A are outside of B
-    if(bottomA <= topB) return false;
-    if(topA >= bottomB) return false;
-    if(rightA <= leftB) return false;
-    if(leftA >= rightB) return false;
-    
-    return true;
-}
 
 // NOTE(chris) ctrl + shift + b builds & runs! (see tasks.json)
 int main(int argc, char* args[])
@@ -425,20 +438,20 @@ int main(int argc, char* args[])
         //     gTextTexture.texture = create_texture_from_text("", gTextTexture.width, gTextTexture.height, textColor);
         // }
         
-        gButtonSpriteSheetTexture.texture = create_texture_from_file("button.png", gButtonSpriteSheetTexture.width, gButtonSpriteSheetTexture.height);
+        // gButtonSpriteSheetTexture.texture = create_texture_from_file("button.png", gButtonSpriteSheetTexture.width, gButtonSpriteSheetTexture.height);
         
-        for(int i = 0; i < BUTTON_SPRITE_TOTAL; ++i)
-        {
-            gSpriteClips[i].x = 0;
-            gSpriteClips[i].y = i * 200;
-            gSpriteClips[i].w = BUTTON_WIDTH;
-            gSpriteClips[i].h = BUTTON_HEIGHT;
-        }
+        // for(int i = 0; i < BUTTON_SPRITE_TOTAL; ++i)
+        // {
+        //     gSpriteClips[i].x = 0;
+        //     gSpriteClips[i].y = i * 200;
+        //     gSpriteClips[i].w = BUTTON_WIDTH;
+        //     gSpriteClips[i].h = BUTTON_HEIGHT;
+        // }
         
-        button_set_positions(gButtons[0], 0, 0);
-        button_set_positions(gButtons[1], gWindow.width - BUTTON_WIDTH, 0);
-        button_set_positions(gButtons[2], 0, gWindow.height - BUTTON_HEIGHT);
-        button_set_positions(gButtons[3], gWindow.width - BUTTON_WIDTH, gWindow.height - BUTTON_HEIGHT);
+        // button_set_positions(gButtons[0], 0, 0);
+        // button_set_positions(gButtons[1], gWindow.width - BUTTON_WIDTH, 0);
+        // button_set_positions(gButtons[2], 0, gWindow.height - BUTTON_HEIGHT);
+        // button_set_positions(gButtons[3], gWindow.width - BUTTON_WIDTH, gWindow.height - BUTTON_HEIGHT);
     }
     
     // Platform
@@ -459,6 +472,14 @@ int main(int argc, char* args[])
     paddle.collider.h = 40;
     paddle.posX = gWindow.width / 2;
     paddle.posY = gWindow.height - 30;
+    
+    Transform ball;
+    ball.collider.w = 25;
+    ball.collider.h = 25;
+    ball.posX = gWindow.width / 4;
+    ball.posY = gWindow.height / 2;
+    ball.velX = BALL_VEL;
+    ball.velY = -BALL_VEL;
     
     const int BLOCKS_PER_ROW = 12;
     Block blocks[BLOCKS_PER_ROW];
@@ -524,6 +545,30 @@ int main(int argc, char* args[])
         if(!gWindow.minimized)
         {
             transform_move(paddle);
+            transform_keep_on_screen(paddle);
+            
+            transform_move(ball);
+            if(check_window_collision_x(ball))
+            {
+                ball.velX = -ball.velX;
+                ball.velY = -ball.velY;
+            }
+            if(check_window_collision_y(ball))
+            {
+                ball.velX = -ball.velX;
+                ball.velY = -ball.velY;
+            }
+            
+            for(int i = 0; i < BLOCKS_PER_ROW; ++i)
+            {
+                if(blocks[i].isActive && check_collision(ball.collider, blocks[i].collider))
+                {
+                    ball.velX = -ball.velX;
+                    ball.velY = -ball.velY;
+                    blocks[i].isActive = false;
+                    break;
+                }
+            }
             
             float averageFPS = countedFrames / ((SDL_GetTicks() - appTimer) / 1000.0f);
             
@@ -551,6 +596,9 @@ int main(int argc, char* args[])
             
             SDL_SetRenderDrawColor(gRenderer, 0x00, 0x00, 0x00, 0xFF);
             SDL_RenderFillRect(gRenderer, &paddle.collider);
+            
+            SDL_SetRenderDrawColor(gRenderer, 0x00, 0xFF, 0x00, 0xFF);
+            SDL_RenderFillRect(gRenderer, &ball.collider);
             
             SDL_RenderPresent(gRenderer);
             ++countedFrames;
