@@ -31,12 +31,41 @@ struct LTexture
 
 LTexture gTextTexture;
 
+const int DOT_WIDTH = 20;
+const int DOT_HEIGHT = 20;
+const int DOT_VEL = 10;
+
+struct Dot
+{
+    int posX, posY;
+    int velX, velY;
+};
+
+LTexture dotTexture;
+Dot dot;
+
+void dot_move(Dot& dot)
+{
+    dot.posX += dot.velX;
+    
+    if(dot.posX < 0 || dot.posX + DOT_WIDTH > SCREEN_WIDTH) 
+    {
+        dot.posX -= dot.velX;
+    }
+    
+    dot.posY += dot.velY;
+    
+    if(dot.posY < 0 || dot.posY + DOT_HEIGHT > SCREEN_HEIGHT) 
+    {
+        dot.posY -= dot.velY;
+    }
+}
 
 const int BUTTON_WIDTH = 300;
 const int BUTTON_HEIGHT = 200;
 const int TOTAL_BUTTONS = 4;
 
-enum LButtonSprite
+enum LButtonState
 {
     BUTTON_SPRITE_MOUSE_OUT = 0,
     BUTTON_SPRITE_MOUSE_OVER_MOTION = 1,
@@ -49,12 +78,11 @@ enum LButtonSprite
 struct LButton
 {
     SDL_Point position;
-    LButtonSprite currentSprite;
+    LButtonState currentState;
 };
 
 SDL_Rect gSpriteClips[TOTAL_BUTTONS];
 LTexture gButtonSpriteSheetTexture;
-
 LButton gButtons[TOTAL_BUTTONS];
 
 void button_set_positions(LButton& button, int x, int y)
@@ -94,21 +122,21 @@ void button_handleEvent(LButton& button, SDL_Event* e)
            switch(e-> type)
            {
                case SDL_MOUSEMOTION:
-               button.currentSprite = BUTTON_SPRITE_MOUSE_OVER_MOTION;
+               button.currentState = BUTTON_SPRITE_MOUSE_OVER_MOTION;
                break;
                
                case SDL_MOUSEBUTTONDOWN:
-               button.currentSprite = BUTTON_SPRITE_MOUSE_DOWN;
+               button.currentState = BUTTON_SPRITE_MOUSE_DOWN;
                break;
                
                case SDL_MOUSEBUTTONUP:
-               button.currentSprite = BUTTON_SPRITE_MOUSE_UP;
+               button.currentState = BUTTON_SPRITE_MOUSE_UP;
                break;
            }
         }
         else
         {
-            button.currentSprite = BUTTON_SPRITE_MOUSE_OUT; 
+            button.currentState = BUTTON_SPRITE_MOUSE_OUT; 
         }
     }
 }
@@ -263,7 +291,7 @@ int main(int argc, char* args[])
     }
 
     { // load media
-        gFont = TTF_OpenFont("lazy.ttf", 28);
+        gFont = TTF_OpenFont("lazy.ttf", 20);
         if(gFont == NULL)
         {
             printf("Failed to load lazy font! SDL_ttf Error: %s\n", TTF_GetError());
@@ -274,6 +302,7 @@ int main(int argc, char* args[])
         //     gTextTexture.texture = create_texture_from_text("", gTextTexture.width, gTextTexture.height, textColor);
         // }
         
+        dotTexture.texture = create_texture_from_file("dot.png", dotTexture.width, dotTexture.height);
         gButtonSpriteSheetTexture.texture = create_texture_from_file("button.png", gButtonSpriteSheetTexture.width, gButtonSpriteSheetTexture.height);
         
         for(int i = 0; i < BUTTON_SPRITE_TOTAL; ++i)
@@ -328,6 +357,18 @@ int main(int argc, char* args[])
                 button_handleEvent(gButtons[i], &e);
             }
             
+            
+            if(e.type == SDL_KEYDOWN && e.key.repeat == 0)
+            {
+                switch(e.key.keysym.sym)
+                {
+                    case SDLK_UP: dot.velY -= DOT_VEL; break;
+                    case SDLK_DOWN: dot.velY += DOT_VEL; break;
+                    case SDLK_LEFT: dot.velX -= DOT_VEL; break;
+                    case SDLK_RIGHT: dot.velX += DOT_VEL; break;
+                }
+            }
+            
             // NOTE(Chris) this is anther method of detecting input
             const Uint8* currentKeyStates = SDL_GetKeyboardState(NULL);
             if(currentKeyStates[SDL_SCANCODE_UP])
@@ -348,6 +389,8 @@ int main(int argc, char* args[])
             }
         }
         
+        dot_move(dot);
+        
         float averageFPS = countedFrames / ((SDL_GetTicks() - appTimer) / 1000.0f);
         
         if(averageFPS > 2000000) averageFPS = 0;
@@ -361,8 +404,8 @@ int main(int argc, char* args[])
         SDL_RenderClear(gRenderer); 
         
         render_texture_at_pos(gTextTexture, 0, 0);
-        
-        render_texture_at_pos(gButtonSpriteSheetTexture, gButtons[3].position.x, gButtons[3].position.y, &gSpriteClips[gButtons[3].currentSprite]);
+        render_texture_at_pos(gButtonSpriteSheetTexture, gButtons[3].position.x, gButtons[3].position.y, &gSpriteClips[gButtons[3].currentState]);
+        render_texture_at_pos(dotTexture, dot.posX, dot.posY);
         
         SDL_RenderPresent(gRenderer);
         ++countedFrames;
@@ -378,6 +421,7 @@ int main(int argc, char* args[])
     { // close
         SDL_DestroyTexture(gTextTexture.texture);
         SDL_DestroyTexture(gButtonSpriteSheetTexture.texture);
+        SDL_DestroyTexture(dotTexture.texture);
     
         TTF_CloseFont(gFont);
         gFont = NULL;
