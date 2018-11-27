@@ -402,15 +402,16 @@ int main(int argc, char* args[])
                 button_handleEvent(gButtons[i], &e);
             }
             
-            
-            if(e.type == SDL_KEYDOWN && e.key.repeat == 0)
+            dot.velX = 0;
+            dot.velY = 0;
+            if(e.type == SDL_KEYDOWN)
             {
                 switch(e.key.keysym.sym)
                 {
-                    case SDLK_UP: dot.velY -= DOT_VEL; break;
-                    case SDLK_DOWN: dot.velY += DOT_VEL; break;
-                    case SDLK_LEFT: dot.velX -= DOT_VEL; break;
-                    case SDLK_RIGHT: dot.velX += DOT_VEL; break;
+                    case SDLK_UP: dot.velY = -DOT_VEL; break;
+                    case SDLK_DOWN: dot.velY = DOT_VEL; break;
+                    case SDLK_LEFT: dot.velX = -DOT_VEL; break;
+                    case SDLK_RIGHT: dot.velX = DOT_VEL; break;
                 }
             }
             
