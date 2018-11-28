@@ -551,11 +551,9 @@ int main(int argc, char* args[])
             if(check_window_collision_x(ball))
             {
                 ball.velX = -ball.velX;
-                ball.velY = -ball.velY;
             }
             if(check_window_collision_y(ball))
             {
-                ball.velX = -ball.velX;
                 ball.velY = -ball.velY;
             }
             
