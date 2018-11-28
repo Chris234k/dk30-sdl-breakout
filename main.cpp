@@ -375,7 +375,11 @@ void window_handle_event(LWindow& window, SDL_Event& e)
 
 
 // NOTE(chris) ctrl + shift + b builds & runs! (see tasks.json)
-int main(int argc, char* args[])
+int CALLBACK WinMain(
+   HINSTANCE hInstance,
+   HINSTANCE hPrevInstance,
+   LPSTR     lpCmdLine,
+   int       nCmdShow)
 {
     { // Init
         bool success = true;
