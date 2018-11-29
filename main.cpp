@@ -87,6 +87,7 @@ LTexture gTextTexture;
 
 const int MOVE_VEL = 10;
 const int BALL_VEL = 3;
+const int BALL_MAX_VEL = 8;
 
 const int BUTTON_WIDTH = 300;
 const int BUTTON_HEIGHT = 200;
@@ -190,6 +191,14 @@ void render_texture_at_pos(LTexture& texture, int x, int y, SDL_Rect* clip = NUL
     }
     
     SDL_RenderCopyEx(gRenderer, texture.texture, clip, &renderQuad, angle, center, flip);
+}
+
+int Clamp(int current, int min, int max)
+{
+    if(current > max) return max;
+    if(current < min) return min;
+    
+    return current;
 }
 
 // NOTE(chris) source: https://gamedev.stackexchange.com/questions/29786/a-simple-2d-rectangle-collision-algorithm-that-also-determines-which-sides-that/29796#29796
@@ -609,7 +618,6 @@ int main (int argc, char *argv[])
                         }
                         
                         blocks[i].isActive = false;
-                        printf("%d\n", (int)result);
                         break;
                     }
                 }
@@ -617,9 +625,21 @@ int main (int argc, char *argv[])
             
             if(check_collision(paddle.collider, ball.collider))
             {
-                ball.velX = -ball.velX;
-                ball.velY = -ball.velY;
+                // Add velocity based on which side of the paddle we hit
+                if(paddle.collider.x + paddle.collider.w / 2 > ball.collider.x + ball.collider.w / 2)
+                {
+                    ball.velX = -abs(ball.velX + paddle.velX);
+                }
+                else
+                {
+                    ball.velX = abs(ball.velX + paddle.velX);
+                }
+                
+                ball.velY = -ball.velY - 1; // add a little bit of vertical vel each paddle collision
             }
+            
+            ball.velX = Clamp(ball.velX, -BALL_MAX_VEL, BALL_MAX_VEL);
+            ball.velY = Clamp(ball.velY, -BALL_MAX_VEL, BALL_MAX_VEL);
             
             float averageFPS = countedFrames / ((SDL_GetTicks() - appTimer) / 1000.0f);
             
