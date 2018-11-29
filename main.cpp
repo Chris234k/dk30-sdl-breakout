@@ -193,7 +193,7 @@ void render_texture_at_pos(LTexture& texture, int x, int y, SDL_Rect* clip = NUL
     SDL_RenderCopyEx(gRenderer, texture.texture, clip, &renderQuad, angle, center, flip);
 }
 
-int Clamp(int current, int min, int max)
+int clamp(int current, int min, int max)
 {
     if(current > max) return max;
     if(current < min) return min;
@@ -415,6 +415,62 @@ void window_handle_event(LWindow& window, SDL_Event& e)
     }
 }
 
+Block* block_row_create(int& numBlocks, int yPos, int width, int height, int spacing)
+{
+    numBlocks = gWindow.width / width;
+    
+    Block* blocks = new Block[numBlocks];
+    
+    for(int i = 0; i < numBlocks; ++i)
+    {
+        blocks[i].collider.x = (i * width) + (i * spacing);
+        blocks[i].collider.y = yPos;
+        
+        blocks[i].collider.w = width;
+        blocks[i].collider.h = height;
+        
+        blocks[i].isActive = true;
+    } 
+    
+    return blocks;
+}
+
+void block_row_collisions(Transform& ball, Block* blocks, int numBlocks)
+{
+    for(int i = 0; i < numBlocks; ++i)
+    {
+        if(blocks[i].isActive)
+        {
+            LRectangleCollision result = check_collision(ball.collider, blocks[i].collider);
+            if(result != COLLISION_NONE)
+            {
+                if(result == COLLISION_LEFT || result == COLLISION_RIGHT)
+                {
+                    ball.velX = -ball.velX;
+                }
+                else if (result == COLLISION_TOP || result == COLLISION_BOTTOM)
+                {
+                    ball.velY = -ball.velY;
+                }
+                
+                blocks[i].isActive = false;
+                break;
+            }
+        }
+    }
+}
+
+void block_row_render(Block* blocks, int numBlocks)
+{
+    for(int i = 0; i < numBlocks; ++i)
+    {
+        if(blocks[i].isActive)
+        {
+            SDL_RenderFillRect(gRenderer, &blocks[i].collider);
+        }
+    }
+}
+
 #undef main // HACK(chris) SDL seems to define its own main function, so we need to undefine it (https://stackoverflow.com/a/30189915)
 int main (int argc, char *argv[])
 {
@@ -523,21 +579,17 @@ int main (int argc, char *argv[])
     ball.velX = BALL_VEL;
     ball.velY = -BALL_VEL;
     
-    const int BLOCKS_PER_ROW = 12;
-    Block blocks[BLOCKS_PER_ROW];
-    int blockSpacing = 3;
-    int blockWidth = (gWindow.width / BLOCKS_PER_ROW) - blockSpacing;
+    int blockRow1Count, blockRow2Count, blockRow3Count;
+    Block* blockRow1;
+    Block* blockRow2;
+    Block* blockRow3;
     
-    for(int i = 0; i < BLOCKS_PER_ROW; ++i)
-    {
-        blocks[i].collider.x = (i * blockWidth) + (i * blockSpacing);
-        blocks[i].collider.y = (gWindow.height / 4);
-        
-        blocks[i].collider.w = blockWidth;
-        blocks[i].collider.h = 20;
-        
-        blocks[i].isActive = true;
-    }
+    int yPos = 0;
+    blockRow1 = block_row_create(blockRow1Count, yPos, 200, 20, 3);
+    yPos += 20;
+    blockRow2 = block_row_create(blockRow2Count, yPos, 100, 40, 3);
+    yPos += 40;
+    blockRow3 = block_row_create(blockRow3Count, yPos, 50, 20, 3);
     
     while(!quit)
     {
@@ -600,28 +652,9 @@ int main (int argc, char *argv[])
             }
             
             // TODO(chris) if(ball.posY + ball.collider.h > gWindow.height)
-            
-            for(int i = 0; i < BLOCKS_PER_ROW; ++i)
-            {
-                if(blocks[i].isActive)
-                {
-                    LRectangleCollision result = check_collision(ball.collider, blocks[i].collider);
-                    if(result != COLLISION_NONE)
-                    {
-                        if(result == COLLISION_LEFT || result == COLLISION_RIGHT)
-                        {
-                            ball.velX = -ball.velX;
-                        }
-                        else if (result == COLLISION_TOP || result == COLLISION_BOTTOM)
-                        {
-                            ball.velY = -ball.velY;
-                        }
-                        
-                        blocks[i].isActive = false;
-                        break;
-                    }
-                }
-            }
+            block_row_collisions(ball, blockRow1, blockRow1Count);
+            block_row_collisions(ball, blockRow2, blockRow2Count);
+            block_row_collisions(ball, blockRow3, blockRow3Count);
             
             if(check_collision(paddle.collider, ball.collider))
             {
@@ -638,8 +671,8 @@ int main (int argc, char *argv[])
                 ball.velY = -ball.velY - 1; // add a little bit of vertical vel each paddle collision
             }
             
-            ball.velX = Clamp(ball.velX, -BALL_MAX_VEL, BALL_MAX_VEL);
-            ball.velY = Clamp(ball.velY, -BALL_MAX_VEL, BALL_MAX_VEL);
+            ball.velX = clamp(ball.velX, -BALL_MAX_VEL, BALL_MAX_VEL);
+            ball.velY = clamp(ball.velY, -BALL_MAX_VEL, BALL_MAX_VEL);
             
             float averageFPS = countedFrames / ((SDL_GetTicks() - appTimer) / 1000.0f);
             
@@ -650,26 +683,30 @@ int main (int argc, char *argv[])
             
             gTextTexture.texture = create_texture_from_text(timeText.str().c_str(), gTextTexture.width, gTextTexture.height, textColor);
             
-            SDL_SetRenderDrawColor(gRenderer, 0xFF, 0xFF, 0xFF, 0xFF);
             SDL_RenderClear(gRenderer); 
             
-            render_texture_at_pos(gTextTexture, 0, 0);
             // render_texture_at_pos(gButtonSpriteSheetTexture, gButtons[3].position.x, gButtons[3].position.y, &gSpriteClips[gButtons[3].currentState]);
             
             SDL_SetRenderDrawColor(gRenderer, 0xFF, 0x00, 0x00, 0xFF);
-            for(int i = 0; i < BLOCKS_PER_ROW; ++i)
-            {
-                if(blocks[i].isActive)
-                {
-                    SDL_RenderFillRect(gRenderer, &blocks[i].collider);
-                }
-            }
+            block_row_render(blockRow1, blockRow1Count);
+            
+            SDL_SetRenderDrawColor(gRenderer, 0x00, 0xFF, 0x00, 0xFF);
+            block_row_render(blockRow2, blockRow2Count);
+            
+            SDL_SetRenderDrawColor(gRenderer, 0x00, 0x00, 0xFF, 0xFF);
+            block_row_render(blockRow3, blockRow3Count);
             
             SDL_SetRenderDrawColor(gRenderer, 0x00, 0x00, 0x00, 0xFF);
             SDL_RenderFillRect(gRenderer, &paddle.collider);
             
             SDL_SetRenderDrawColor(gRenderer, 0x00, 0xFF, 0x00, 0xFF);
             SDL_RenderFillRect(gRenderer, &ball.collider);
+            
+            
+            // Render UI last
+            SDL_SetRenderDrawColor(gRenderer, 0xFF, 0xFF, 0xFF, 0xFF);
+            render_texture_at_pos(gTextTexture, 0, 0);
+            
             
             SDL_RenderPresent(gRenderer);
             ++countedFrames;
@@ -684,6 +721,11 @@ int main (int argc, char *argv[])
     }
 
     { // close
+        
+        delete[] blockRow1;
+        delete[] blockRow2;
+        delete[] blockRow3;
+    
         SDL_DestroyTexture(gTextTexture.texture);
         SDL_DestroyTexture(gButtonSpriteSheetTexture.texture);
     
