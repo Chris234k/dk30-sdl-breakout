@@ -192,38 +192,52 @@ void render_texture_at_pos(LTexture& texture, int x, int y, SDL_Rect* clip = NUL
     SDL_RenderCopyEx(gRenderer, texture.texture, clip, &renderQuad, angle, center, flip);
 }
 
+// NOTE(chris) source: https://gamedev.stackexchange.com/questions/29786/a-simple-2d-rectangle-collision-algorithm-that-also-determines-which-sides-that/29796#29796
 LRectangleCollision check_collision(SDL_Rect a, SDL_Rect b)
 {
-    int leftA, leftB;
-    int rightA, rightB;
-    int topA, topB;
-    int bottomA, bottomB;
+    int width = (a.w + b.w) / 2;
+    int height = (a.h + b.h) / 2;
     
-    leftA = a.x;
-    rightA = a.x + a.w;
-    topA = a.y;
-    bottomA = a.y + a.h;
+    int aCenterX = a.x + (a.w / 2);
+    int aCenterY = a.y + (a.h / 2);
     
-    leftB = b.x;
-    rightB = b.x + b.w;
-    topB = b.y;
-    bottomB = b.y + b.h;
+    int bCenterX = b.x + (b.w / 2);
+    int bCenterY = b.y + (b.h / 2);
     
-    // Detect if any sides of A are outside of B
-    if(bottomA <= topB) return COLLISION_NONE;
-    if(topA >= bottomB) return COLLISION_NONE;
-    if(rightA <= leftB) return COLLISION_NONE;
-    if(leftA >= rightB) return COLLISION_NONE;
+    int deltaX = aCenterX - bCenterX;
+    int deltaY = aCenterY - bCenterY;
     
-    // If we've made it this far then a collision HAS occurred
-    // We need to detect which side we're on
-    
-    // TODO TODO TODO(chris) still need to detect which of these is the "closest"... because side collisions still fire the top and bottom checks
-    if(bottomA > topB && bottomA < bottomB) return COLLISION_BOTTOM;
-    else if(topA > topB && topA < bottomB) return COLLISION_TOP;
-    
-    if (leftA < leftB && leftA < rightB) return COLLISION_RIGHT;
-    else if (rightA < leftB && rightA > rightB) return COLLISION_LEFT;
+    if(abs(deltaX) <= width && abs(deltaY) <= height)
+    {
+        // A collision has occurred, solve for which side
+        int crossWidth = width * deltaY;
+        int crossHeight = height * deltaX;
+        
+        if(crossWidth > crossHeight)
+        {
+            if(crossWidth > -crossHeight)
+            {
+                return COLLISION_BOTTOM;
+            }
+            else
+            {
+                return COLLISION_LEFT;
+            }
+        }
+        else
+        {
+            if(crossWidth > -crossHeight)
+            {
+                return COLLISION_RIGHT;
+            }
+            else
+            {
+                return COLLISION_TOP;
+            }
+        }
+        
+        return COLLISION_TOP;
+    }
     
     return COLLISION_NONE;
 }
@@ -595,6 +609,7 @@ int main (int argc, char *argv[])
                         }
                         
                         blocks[i].isActive = false;
+                        printf("%d\n", (int)result);
                         break;
                     }
                 }
