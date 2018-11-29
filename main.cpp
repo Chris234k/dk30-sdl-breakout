@@ -600,6 +600,12 @@ int main (int argc, char *argv[])
                 }
             }
             
+            if(check_collision(paddle.collider, ball.collider))
+            {
+                ball.velX = -ball.velX;
+                ball.velY = -ball.velY;
+            }
+            
             float averageFPS = countedFrames / ((SDL_GetTicks() - appTimer) / 1000.0f);
             
             if(averageFPS > 2000000) averageFPS = 0;
