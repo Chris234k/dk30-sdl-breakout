@@ -39,6 +39,15 @@ struct Block
     SDL_Rect collider;
 };
 
+enum LRectangleCollision
+{
+    COLLISION_NONE = 0,
+    COLLISION_TOP = 1,
+    COLLISION_BOTTOM = 2,
+    COLLISION_LEFT = 3,
+    COLLISION_RIGHT = 4
+};
+
 struct Transform
 {
     int posX, posY;
@@ -183,7 +192,7 @@ void render_texture_at_pos(LTexture& texture, int x, int y, SDL_Rect* clip = NUL
     SDL_RenderCopyEx(gRenderer, texture.texture, clip, &renderQuad, angle, center, flip);
 }
 
-bool check_collision(SDL_Rect a, SDL_Rect b)
+LRectangleCollision check_collision(SDL_Rect a, SDL_Rect b)
 {
     int leftA, leftB;
     int rightA, rightB;
@@ -201,12 +210,19 @@ bool check_collision(SDL_Rect a, SDL_Rect b)
     bottomB = b.y + b.h;
     
     // Detect if any sides of A are outside of B
-    if(bottomA <= topB) return false;
-    if(topA >= bottomB) return false;
-    if(rightA <= leftB) return false;
-    if(leftA >= rightB) return false;
+    if(bottomA <= topB) return COLLISION_NONE;
+    if(topA >= bottomB) return COLLISION_NONE;
+    if(rightA <= leftB) return COLLISION_NONE;
+    if(leftA >= rightB) return COLLISION_NONE;
     
-    return true;
+    // If we've made it this far then a collision HAS occurred
+    // We need to detect which side we're on
+    if(bottomA > topB && bottomA < bottomB) return COLLISION_BOTTOM;
+    else if(topA > topB && topA < bottomB) return COLLISION_TOP;
+    else if (leftA < leftB && leftA < rightB) return COLLISION_RIGHT;
+    else if (rightA < leftB && rightA > rightB) return COLLISION_LEFT;
+    
+    return COLLISION_NONE;
 }
 
 bool check_window_collision_x(Transform transform)
@@ -373,13 +389,8 @@ void window_handle_event(LWindow& window, SDL_Event& e)
     }
 }
 
-
-// NOTE(chris) ctrl + shift + b builds & runs! (see tasks.json)
-int CALLBACK WinMain(
-   HINSTANCE hInstance,
-   HINSTANCE hPrevInstance,
-   LPSTR     lpCmdLine,
-   int       nCmdShow)
+#undef main // HACK(chris) SDL seems to define its own main function, so we need to undefine it (https://stackoverflow.com/a/30189915)
+int main (int argc, char *argv[])
 {
     { // Init
         bool success = true;
@@ -391,6 +402,7 @@ int CALLBACK WinMain(
         }
         else
         {
+            
             // Window creation
             gWindow.window = SDL_CreateWindow("Breakout", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_RESIZABLE);
             gWindow.width = SCREEN_WIDTH;
@@ -501,7 +513,6 @@ int CALLBACK WinMain(
         blocks[i].isActive = true;
     }
     
-    
     while(!quit)
     {
         frameTimer = SDL_GetTicks();
@@ -563,12 +574,23 @@ int CALLBACK WinMain(
             
             for(int i = 0; i < BLOCKS_PER_ROW; ++i)
             {
-                if(blocks[i].isActive && check_collision(ball.collider, blocks[i].collider))
+                if(blocks[i].isActive)
                 {
-                    ball.velX = -ball.velX;
-                    ball.velY = -ball.velY;
-                    blocks[i].isActive = false;
-                    break;
+                    LRectangleCollision result = check_collision(ball.collider, blocks[i].collider);
+                    if(result != COLLISION_NONE)
+                    {
+                        if(result == COLLISION_LEFT || result == COLLISION_RIGHT)
+                        {
+                            ball.velX = -ball.velX;
+                        }
+                        else if (result == COLLISION_TOP || result == COLLISION_BOTTOM)
+                        {
+                            ball.velY = -ball.velY;
+                        }
+                        
+                        blocks[i].isActive = false;
+                        break;
+                    }
                 }
             }
             
