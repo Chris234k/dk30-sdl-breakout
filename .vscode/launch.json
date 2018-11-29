@@ -8,6 +8,7 @@
             "name": "(Windows) Launch",
             "type": "cppvsdbg",
             "request": "launch",
+            "preLaunchTask": "compile",
             "program": "${workspaceFolder}/build/main.exe",
             "args": [],
             "stopAtEntry": false,
