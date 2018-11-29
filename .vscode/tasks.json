@@ -15,6 +15,7 @@
                 "showReuseMessage": true,
                 "clear":true
             },
+                
             "problemMatcher": {
                 "owner": "cpp",
                 "fileLocation": [
@@ -22,12 +23,11 @@
                     "${workspaceRoot}"
                 ],
                 "pattern": {
-                    "regexp": "^(.*):(\\d+):(\\d+):\\s+(warning|error):\\s+(.*)$",
+                    "regexp": "^..\/(.*)\\((.*)\\): (note|warning|error)(.*)", //NOTE(chris) ignore the first "../" (file path is relative to the build folder)
                     "file": 1,
-                    "line": 2,
-                    "column": 3,
-                    "severity": 4,
-                    "message": 5
+                    "location": 2,
+                    "severity": 3,
+                    "code": 4,
                 }
             }
         },

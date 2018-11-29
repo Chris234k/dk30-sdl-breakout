@@ -217,9 +217,12 @@ LRectangleCollision check_collision(SDL_Rect a, SDL_Rect b)
     
     // If we've made it this far then a collision HAS occurred
     // We need to detect which side we're on
+    
+    // TODO TODO TODO(chris) still need to detect which of these is the "closest"... because side collisions still fire the top and bottom checks
     if(bottomA > topB && bottomA < bottomB) return COLLISION_BOTTOM;
     else if(topA > topB && topA < bottomB) return COLLISION_TOP;
-    else if (leftA < leftB && leftA < rightB) return COLLISION_RIGHT;
+    
+    if (leftA < leftB && leftA < rightB) return COLLISION_RIGHT;
     else if (rightA < leftB && rightA > rightB) return COLLISION_LEFT;
     
     return COLLISION_NONE;
@@ -567,10 +570,13 @@ int main (int argc, char *argv[])
             {
                 ball.velX = -ball.velX;
             }
-            if(check_window_collision_y(ball))
+            
+            if(ball.posY < 0)
             {
                 ball.velY = -ball.velY;
             }
+            
+            // TODO(chris) if(ball.posY + ball.collider.h > gWindow.height)
             
             for(int i = 0; i < BLOCKS_PER_ROW; ++i)
             {
