@@ -217,7 +217,7 @@ LRectangleCollision check_collision(SDL_Rect a, SDL_Rect b)
         {
             if(crossWidth > -crossHeight)
             {
-                return COLLISION_BOTTOM;
+                return COLLISION_TOP;
             }
             else
             {
@@ -232,7 +232,7 @@ LRectangleCollision check_collision(SDL_Rect a, SDL_Rect b)
             }
             else
             {
-                return COLLISION_TOP;
+                return COLLISION_BOTTOM;
             }
         }
         
